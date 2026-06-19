@@ -13,7 +13,8 @@ class RouteNavigationScreen extends StatefulWidget {
   State<RouteNavigationScreen> createState() => _RouteNavigationScreenState();
 }
 
-class _RouteNavigationScreenState extends State<RouteNavigationScreen> with SingleTickerProviderStateMixin {
+class _RouteNavigationScreenState extends State<RouteNavigationScreen>
+    with SingleTickerProviderStateMixin {
   late AnimationController _pulseController;
   late Animation<double> _pulseAnimation;
 
@@ -83,11 +84,15 @@ class _RouteNavigationScreenState extends State<RouteNavigationScreen> with Sing
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.local_shipping_outlined, size: 64, color: greyTextColor),
+                  Icon(Icons.local_shipping_outlined,
+                      size: 64, color: greyTextColor),
                   const SizedBox(height: 16),
                   const Text(
                     "No Active Trip Assigned",
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xff0C243E)),
+                    style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xff0C243E)),
                   ),
                   const SizedBox(height: 8),
                   Text(
@@ -130,12 +135,14 @@ class _RouteNavigationScreenState extends State<RouteNavigationScreen> with Sing
                             const Positioned(
                               top: 40,
                               left: 30,
-                              child: Icon(Icons.location_on, color: Colors.green, size: 20),
+                              child: Icon(Icons.location_on,
+                                  color: Colors.green, size: 20),
                             ),
                             const Positioned(
                               bottom: 60,
                               right: 40,
-                              child: Icon(Icons.location_on, color: Colors.grey, size: 20),
+                              child: Icon(Icons.location_on,
+                                  color: Colors.grey, size: 20),
                             ),
                             // Current Active Pulse Pin in Center
                             Center(
@@ -182,7 +189,7 @@ class _RouteNavigationScreenState extends State<RouteNavigationScreen> with Sing
                         ),
                       ),
                     ),
-                    
+
                     // Metrics overlay card
                     Positioned(
                       bottom: -40,
@@ -204,10 +211,18 @@ class _RouteNavigationScreenState extends State<RouteNavigationScreen> with Sing
                         child: Row(
                           children: [
                             _buildMapMetricCol(trip.totalDistance, "Distance"),
-                            Container(width: 1, height: 32, color: Colors.grey.shade200),
+                            Container(
+                                width: 1,
+                                height: 32,
+                                color: Colors.grey.shade200),
                             _buildMapMetricCol(trip.eta, "ETA"),
-                            Container(width: 1, height: 32, color: Colors.grey.shade200),
-                            _buildMapMetricCol("${trip.pendingCount}/${trip.stopsCount}", "Stops"),
+                            Container(
+                                width: 1,
+                                height: 32,
+                                color: Colors.grey.shade200),
+                            _buildMapMetricCol(
+                                "${trip.pendingCount}/${trip.stopsCount}",
+                                "Stops"),
                           ],
                         ),
                       ),
@@ -226,10 +241,14 @@ class _RouteNavigationScreenState extends State<RouteNavigationScreen> with Sing
                         "Opening Google Maps external navigation sequence...",
                       );
                     },
-                    icon: const Icon(Icons.navigation_outlined, color: Colors.white, size: 20),
+                    icon: const Icon(Icons.navigation_outlined,
+                        color: Colors.white, size: 20),
                     label: const Text(
                       "Open in Google Maps",
-                      style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white),
+                      style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white),
                     ),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: appColor,
@@ -265,7 +284,8 @@ class _RouteNavigationScreenState extends State<RouteNavigationScreen> with Sing
                         itemBuilder: (context, index) {
                           final stop = trip.stops[index];
                           final isLast = index == trip.stops.length - 1;
-                          return _buildTimelineItem(context, stop, index, isLast, trip.id);
+                          return _buildTimelineItem(
+                              context, stop, index, isLast, trip.id);
                         },
                       ),
                     ],
@@ -305,7 +325,8 @@ class _RouteNavigationScreenState extends State<RouteNavigationScreen> with Sing
     );
   }
 
-  Widget _buildTimelineItem(BuildContext context, RouteStop stop, int index, bool isLast, String tripId) {
+  Widget _buildTimelineItem(BuildContext context, RouteStop stop, int index,
+      bool isLast, String tripId) {
     bool isDelivered = stop.status == "Delivered";
     bool isActive = stop.status == "Active";
     bool isPlant = index == 0;
@@ -313,23 +334,27 @@ class _RouteNavigationScreenState extends State<RouteNavigationScreen> with Sing
     Color circleColor = Colors.grey.shade300;
     Widget circleChild = Text(
       "$index",
-      style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.grey, fontSize: 12),
+      style: const TextStyle(
+          fontWeight: FontWeight.bold, color: Colors.grey, fontSize: 12),
     );
 
     if (isPlant) {
       circleColor = const Color(0xffE6F4EA);
-      circleChild = Icon(Icons.inventory_2_outlined, color: greenColor, size: 18);
+      circleChild =
+          Icon(Icons.inventory_2_outlined, color: greenColor, size: 18);
     } else if (isDelivered) {
       circleColor = const Color(0xffE6F4EA);
       circleChild = Text(
         "$index",
-        style: TextStyle(fontWeight: FontWeight.bold, color: greenColor, fontSize: 12),
+        style: TextStyle(
+            fontWeight: FontWeight.bold, color: greenColor, fontSize: 12),
       );
     } else if (isActive) {
       circleColor = appColor.withOpacity(0.15);
       circleChild = Text(
         "$index",
-        style: const TextStyle(fontWeight: FontWeight.bold, color: appColor, fontSize: 12),
+        style: const TextStyle(
+            fontWeight: FontWeight.bold, color: appColor, fontSize: 12),
       );
     }
 
@@ -345,7 +370,8 @@ class _RouteNavigationScreenState extends State<RouteNavigationScreen> with Sing
                 decoration: BoxDecoration(
                   color: circleColor,
                   shape: BoxShape.circle,
-                  border: isActive ? Border.all(color: appColor, width: 2) : null,
+                  border:
+                      isActive ? Border.all(color: appColor, width: 2) : null,
                 ),
                 child: Center(child: circleChild),
               ),
@@ -382,10 +408,10 @@ class _RouteNavigationScreenState extends State<RouteNavigationScreen> with Sing
                     ),
                   ),
                   const SizedBox(height: 8),
-                  
                   if (isDelivered && !isPlant)
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 10, vertical: 4),
                       decoration: BoxDecoration(
                         color: const Color(0xffE6F4EA),
                         borderRadius: BorderRadius.circular(12),
@@ -407,7 +433,6 @@ class _RouteNavigationScreenState extends State<RouteNavigationScreen> with Sing
                         ],
                       ),
                     ),
-                    
                   if (isActive && !isPlant) ...[
                     Row(
                       children: [
@@ -418,14 +443,16 @@ class _RouteNavigationScreenState extends State<RouteNavigationScreen> with Sing
                               "Connecting call to ${stop.contactPerson} (${stop.phone})...",
                             );
                           },
-                          icon: const Icon(Icons.phone_outlined, size: 16, color: appColor),
+                          icon: const Icon(Icons.phone_outlined,
+                              size: 16, color: appColor),
                           label: const Text(
                             "Call",
                             style: TextStyle(color: appColor, fontSize: 13),
                           ),
                           style: OutlinedButton.styleFrom(
                             side: const BorderSide(color: appColor),
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 16, vertical: 8),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(20),
                             ),
@@ -435,16 +462,17 @@ class _RouteNavigationScreenState extends State<RouteNavigationScreen> with Sing
                         ElevatedButton(
                           onPressed: () {
                             Get.to(() => DeliveryVerificationScreen(
-                              stopIndex: stop.index,
-                              pumpName: stop.name,
-                              barrelsQty: stop.barrelsQty,
-                              cansQty: stop.cansQty,
-                              expectedOtp: stop.otpCode,
-                            ));
+                                  stopIndex: stop.index,
+                                  pumpName: stop.name,
+                                  barrelsQty: stop.barrelsQty,
+                                  cansQty: stop.cansQty,
+                                  expectedOtp: stop.otpCode,
+                                ));
                           },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: appColor,
-                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 20, vertical: 8),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(20),
                             ),
@@ -462,7 +490,6 @@ class _RouteNavigationScreenState extends State<RouteNavigationScreen> with Sing
                       ],
                     ),
                   ],
-
                   if (stop.status == "Upcoming" && !isPlant)
                     Row(
                       children: [
@@ -501,9 +528,12 @@ class MapRoutePainter extends CustomPainter {
     path.moveTo(0, size.height * 0.25);
     // Draw bezier curve to bottom-right
     path.cubicTo(
-      size.width * 0.3, size.height * 0.1,
-      size.width * 0.7, size.height * 0.7,
-      size.width, size.height * 0.4,
+      size.width * 0.3,
+      size.height * 0.1,
+      size.width * 0.7,
+      size.height * 0.7,
+      size.width,
+      size.height * 0.4,
     );
 
     // Draw dotted line

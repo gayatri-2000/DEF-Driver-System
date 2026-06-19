@@ -6,6 +6,8 @@ import 'package:def_driver_system/Api/Repo/mock_data.dart';
 import 'package:def_driver_system/View/Screen/Delivery/delivery_verification_screen.dart';
 import 'route_navigation_screen.dart';
 import 'package:def_driver_system/View/Screen/BottomBarScreen/Notification/notification_screen.dart';
+import 'package:def_driver_system/View/Controller/notification_controller.dart';
+
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
@@ -42,29 +44,34 @@ class HomeScreen extends StatelessWidget {
         ),
         actions: [
           // Notification Bell with Badge
-          Stack(
-            alignment: Alignment.center,
-            children: [
-              IconButton(
-                icon: const Icon(Icons.notifications_none_rounded,
-                    color: Colors.white, size: 26),
-                onPressed: () {
-                  Get.to(() => const NotificationScreen());
-                },
-              ),
-              Positioned(
-                top: 10,
-                right: 12,
-                child: Container(
-                  width: 8,
-                  height: 8,
-                  decoration: const BoxDecoration(
-                    color: Colors.red,
-                    shape: BoxShape.circle,
+          GetBuilder<NotificationController>(
+            builder: (notiController) {
+              return Stack(
+                alignment: Alignment.center,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.notifications_none_rounded,
+                        color: Colors.white, size: 26),
+                    onPressed: () {
+                      Get.to(() => const NotificationScreen());
+                    },
                   ),
-                ),
-              ),
-            ],
+                  if (notiController.hasUnread)
+                    Positioned(
+                      top: 10,
+                      right: 12,
+                      child: Container(
+                        width: 8,
+                        height: 8,
+                        decoration: const BoxDecoration(
+                          color: Colors.red,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                    ),
+                ],
+              );
+            },
           ),
           const SizedBox(width: 8),
         ],

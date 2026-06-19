@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import '../../Api/Repo/auth_repo.dart';
 import '../../Api/Repo/mock_data.dart';
 import '../../Api/Services/base_service.dart';
+import '../../Api/Services/one_signal_service.dart';
 import '../../Api/ResponseModel/login_response_model.dart';
 import '../../View/Constant/shared_prefs.dart';
 import '../../View/Utils/app_layout.dart';
@@ -47,11 +48,13 @@ class AuthController extends GetxController {
     try {
       await preferences.init();
       final String db = ApiRouts.databaseName;
-      
+      final String? playerId = await OneSignalService.getPlayerId();
+
       LoginResponseModel loginRes = await _authRepo.login(
         username: phone,
         password: pin,
         db: db,
+        playerId: playerId,
       );
 
       if (loginRes.uid != null) {
@@ -64,13 +67,15 @@ class AuthController extends GetxController {
           return false;
         }
 
+        await OneSignalService.loginUser(loginRes.uid.toString());
+
         // Save session details
         await preferences.putBool(SharedPreference.isLogin, true);
         await preferences.putString(SharedPreference.userId, loginRes.uid.toString());
         await preferences.putString(SharedPreference.userName, loginRes.name ?? "");
         await preferences.putString(SharedPreference.userPassword, loginRes.username ?? "");
         await preferences.putString(SharedPreference.profileImage, loginRes.profileImage ?? "");
-        
+
         // Save sid if returned in JSON payload and no session ID is currently saved
         final String currentSession = preferences.getString(SharedPreference.sessionId) ?? "";
         if (currentSession.isEmpty && loginRes.session?.sid != null) {
@@ -91,7 +96,7 @@ class AuthController extends GetxController {
           vehicleReg: "TN 01 AB 1234",
           vehicleLicense: "TN-1234567890",
         );
-        
+
         update();
         successSnackBar("Success", "Login Successful. Welcome back, ${loginRes.name}!");
         return true;
@@ -130,6 +135,7 @@ class AuthController extends GetxController {
 
   Future<void> logout() async {
     await preferences.init();
+    await OneSignalService.logoutUser();
     await preferences.logOut();
     isLoggedIn = false;
     currentDriver = null;

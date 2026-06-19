@@ -10,12 +10,16 @@ class AuthRepo {
     required String username,
     required String password,
     required String db,
+    String? playerId,
   }) async {
     final Map<String, dynamic> body = {
       'db': db,
       'login': username,
       'password': password,
     };
+    if (playerId != null && playerId.isNotEmpty) {
+      body['player_id'] = playerId;
+    }
 
     final response = await _apiService.getResponse(
       url: ApiRouts.loginAPI,

@@ -1,35 +1,23 @@
-// import 'dart:developer';
-// import 'package:venkatesh_buildcon_app/Api/ResponseModel/notification_res_model.dart';
-// import 'package:venkatesh_buildcon_app/Api/Services/api_service.dart';
-// import 'package:venkatesh_buildcon_app/Api/Services/base_service.dart';
-// import 'package:venkatesh_buildcon_app/View/Constant/shared_prefs.dart';
+import 'dart:developer';
+import 'package:def_driver_system/Api/ResponseModel/notification_response_model.dart';
+import 'package:def_driver_system/Api/Services/api_service.dart';
+import 'package:def_driver_system/Api/Services/base_service.dart';
 
-// class NotificationRepo {
-//   Map<String, String> header1 = {
-//     'Content-Type': 'application/json',
-//     'Cookie':
-//         'Cookie_1=value; ${preferences.getString(SharedPreference.sessionId)}'
-//   };
+class NotificationRepo {
+  final APIService _apiService = APIService();
 
-//   /// GET NOTIFICATION PROJECT DETAILS ::::::::::::::::::::::::::::::::::::::::::::::::::::::
+  Future<NotificationResponseModel> getNotifications(int customerId) async {
+    final Map<String, dynamic> body = {
+      'customer_id': customerId,
+    };
 
-//   Future<dynamic> getNotificationRepo() async {
-//     var response = await APIService().getResponse(
-//       url: ApiRouts.notification,
-//       apiType: APIType.aPost,
-//       body: {
-//         "id": int.parse(preferences.getString(SharedPreference.userId) ?? "0")
-//       },
-//       header: header1,
-//     );
+    final response = await _apiService.getResponse(
+      url: ApiRouts.notificationAPI,
+      apiType: APIType.aPost,
+      body: body,
+    );
 
-//     log('notificationResModel --- response>> $response');
-
-//     NotificationResModel notificationResModel =
-//         NotificationResModel.fromJson(response);
-
-//     log('notificationResModel --- response>> $response');
-
-//     return notificationResModel;
-//   }
-// }
+    log("NotificationRepo getNotifications Response: $response");
+    return NotificationResponseModel.fromJson(response as Map<String, dynamic>);
+  }
+}
