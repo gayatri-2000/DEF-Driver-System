@@ -1,3 +1,10 @@
+String? _parseString(dynamic value) {
+  if (value is String) {
+    return value;
+  }
+  return null;
+}
+
 class TripDetailResponseModel {
   final String? status;
   final String? message;
@@ -11,8 +18,8 @@ class TripDetailResponseModel {
 
   factory TripDetailResponseModel.fromJson(Map<String, dynamic> json) {
     return TripDetailResponseModel(
-      status: json['status'] as String?,
-      message: json['message'] as String?,
+      status: _parseString(json['status']),
+      message: _parseString(json['message']),
       trip: json['trip'] != null
           ? TripDetails.fromJson(json['trip'] as Map<String, dynamic>)
           : null,
@@ -70,17 +77,17 @@ class TripDetails {
   factory TripDetails.fromJson(Map<String, dynamic> json) {
     return TripDetails(
       tripId: json['trip_id'] as int?,
-      tripName: json['trip_name'] as String?,
-      tripSheetNumber: json['trip_sheet_number'] as String?,
-      tripDate: json['trip_date'] as String?,
-      status: json['status'] as String?,
-      startTime: json['start_time'] as String?,
-      endTime: json['end_time'] as String?,
+      tripName: _parseString(json['trip_name']),
+      tripSheetNumber: _parseString(json['trip_sheet_number']),
+      tripDate: _parseString(json['trip_date']),
+      status: _parseString(json['status']),
+      startTime: _parseString(json['start_time']),
+      endTime: _parseString(json['end_time']),
       totalOrders: json['total_orders'] as int?,
       totalAmount: (json['total_amount'] as num?)?.toDouble(),
       totalWeight: (json['total_weight'] as num?)?.toDouble(),
       vehicleCapacity: (json['vehicle_capacity'] as num?)?.toDouble(),
-      notes: json['notes'] as String?,
+      notes: _parseString(json['notes']),
       plant: json['plant'] != null ? TripEntityReference.fromJson(json['plant'] as Map<String, dynamic>) : null,
       route: json['route'] != null ? TripEntityReference.fromJson(json['route'] as Map<String, dynamic>) : null,
       vehicle: json['vehicle'] != null ? TripEntityReference.fromJson(json['vehicle'] as Map<String, dynamic>) : null,
@@ -123,7 +130,7 @@ class TripEntityReference {
   factory TripEntityReference.fromJson(Map<String, dynamic> json) {
     return TripEntityReference(
       id: json['id'],
-      name: json['name'] as String?,
+      name: _parseString(json['name']),
     );
   }
 
@@ -175,20 +182,20 @@ class TripOrder {
   factory TripOrder.fromJson(Map<String, dynamic> json) {
     return TripOrder(
       orderId: json['order_id'] as int?,
-      orderName: json['order_name'] as String?,
-      customerName: json['customer_name'] as String?,
-      customerMobile: json['customer_mobile'] as String?,
-      deliveryAddress: json['delivery_address'] as String?,
+      orderName: _parseString(json['order_name']),
+      customerName: _parseString(json['customer_name']),
+      customerMobile: _parseString(json['customer_mobile']),
+      deliveryAddress: _parseString(json['delivery_address']),
       latitude: (json['latitude'] as num?)?.toDouble(),
       longitude: (json['longitude'] as num?)?.toDouble(),
       amountTotal: (json['amount_total'] as num?)?.toDouble(),
-      paymentMethod: json['payment_method'] as String?,
-      deliveryStatus: json['delivery_status'] as String?,
+      paymentMethod: _parseString(json['payment_method']),
+      deliveryStatus: _parseString(json['delivery_status']),
       otpVerified: json['otp_verified'] as bool?,
       otpRequired: json['otp_required'] as bool?,
       podUploaded: json['pod_uploaded'] as bool?,
       podRequired: json['pod_required'] as bool?,
-      deliveryOtp: json['delivery_otp'] as String?,
+      deliveryOtp: _parseString(json['delivery_otp']),
       items: json['items'] != null
           ? (json['items'] as List).map((e) => TripOrderItem.fromJson(e as Map<String, dynamic>)).toList()
           : null,
@@ -237,7 +244,7 @@ class TripOrderItem {
   factory TripOrderItem.fromJson(Map<String, dynamic> json) {
     return TripOrderItem(
       productId: json['product_id'] as int?,
-      productName: json['product_name'] as String?,
+      productName: _parseString(json['product_name']),
       quantity: (json['quantity'] as num?)?.toDouble(),
       unitPrice: (json['unit_price'] as num?)?.toDouble(),
       subtotal: (json['subtotal'] as num?)?.toDouble(),

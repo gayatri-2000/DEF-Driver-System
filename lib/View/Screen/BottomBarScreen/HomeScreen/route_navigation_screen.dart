@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:google_maps_flutter/google_maps_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:def_driver_system/View/Controller/trip_controller.dart';
 import 'package:def_driver_system/View/Constant/app_color.dart';
 import 'package:def_driver_system/Api/Repo/mock_data.dart';
@@ -13,27 +15,129 @@ class RouteNavigationScreen extends StatefulWidget {
   State<RouteNavigationScreen> createState() => _RouteNavigationScreenState();
 }
 
-class _RouteNavigationScreenState extends State<RouteNavigationScreen>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _pulseController;
-  late Animation<double> _pulseAnimation;
+class _RouteNavigationScreenState extends State<RouteNavigationScreen> {
+  GoogleMapController? _mapController;
+  final Set<Marker> _markers = {};
+  final Set<Polyline> _polylines = {};
 
-  @override
-  void initState() {
-    super.initState();
-    _pulseController = AnimationController(
-      vsync: this,
-      duration: const Duration(seconds: 2),
-    )..repeat(reverse: true);
-    _pulseAnimation = Tween<double>(begin: 1.0, end: 1.3).animate(
-      CurvedAnimation(parent: _pulseController, curve: Curves.easeInOut),
-    );
+  double _parseCoordinate(String coordinate) {
+    final clean = coordinate
+        .replaceAll('°', '')
+        .replaceAll('N', '')
+        .replaceAll('S', '')
+        .replaceAll('E', '')
+        .replaceAll('W', '')
+        .trim();
+    double value = double.tryParse(clean) ?? 0.0;
+    if (coordinate.contains('S') || coordinate.contains('W')) {
+      value = -value;
+    }
+    return value;
+  }
+
+  void _buildMapData(Trip trip) {
+    _markers.clear();
+    _polylines.clear();
+
+    final List<LatLng> points = [];
+
+    for (int i = 0; i < trip.stops.length; i++) {
+      final stop = trip.stops[i];
+      final double lat = _parseCoordinate(stop.lat);
+      final double lng = _parseCoordinate(stop.lng);
+      final LatLng latLng = LatLng(lat, lng);
+      points.add(latLng);
+
+      double markerColor = BitmapDescriptor.hueRed;
+      if (i == 0) {
+        markerColor = BitmapDescriptor.hueGreen;
+      } else if (stop.status == "Delivered") {
+        markerColor = BitmapDescriptor.hueAzure;
+      } else if (stop.status == "Active") {
+        markerColor = BitmapDescriptor.hueOrange;
+      }
+
+      _markers.add(
+        Marker(
+          markerId: MarkerId('stop_${stop.index}_$i'),
+          position: latLng,
+          infoWindow: InfoWindow(
+            title: stop.name,
+            snippet: '${stop.status} - Qty: ${stop.barrelsQty} Barrels, ${stop.cansQty} Cans',
+          ),
+          icon: BitmapDescriptor.defaultMarkerWithHue(markerColor),
+        ),
+      );
+    }
+
+    if (points.isNotEmpty) {
+      _polylines.add(
+        Polyline(
+          polylineId: const PolylineId('route_path'),
+          points: points,
+          color: appColor,
+          width: 4,
+        ),
+      );
+    }
+  }
+
+  void _fitMapBounds(List<LatLng> points) {
+    if (_mapController == null || points.isEmpty) return;
+
+    double? minLat, maxLat, minLng, maxLng;
+    for (final point in points) {
+      if (minLat == null || point.latitude < minLat) minLat = point.latitude;
+      if (maxLat == null || point.latitude > maxLat) maxLat = point.latitude;
+      if (minLng == null || point.longitude < minLng) minLng = point.longitude;
+      if (maxLng == null || point.longitude > maxLng) maxLng = point.longitude;
+    }
+
+    if (minLat != null && maxLat != null && minLng != null && maxLng != null) {
+      _mapController!.animateCamera(
+        CameraUpdate.newLatLngBounds(
+          LatLngBounds(
+            southwest: LatLng(minLat, minLng),
+            northeast: LatLng(maxLat, maxLng),
+          ),
+          50.0,
+        ),
+      );
+    }
+  }
+
+  void _openGoogleMaps(Trip trip) async {
+    RouteStop? activeStop;
+    try {
+      activeStop = trip.stops.firstWhere((s) => s.status == "Active" && s.index != 0);
+    } catch (_) {
+      try {
+        activeStop = trip.stops.firstWhere((s) => s.status == "Upcoming" && s.index != 0);
+      } catch (_) {
+        if (trip.stops.length > 1) {
+          activeStop = trip.stops[1];
+        }
+      }
+    }
+
+    if (activeStop != null) {
+      final double lat = _parseCoordinate(activeStop.lat);
+      final double lng = _parseCoordinate(activeStop.lng);
+      final String googleMapsUrl = 'https://www.google.com/maps/dir/?api=1&destination=$lat,$lng&travelmode=driving';
+      final Uri uri = Uri.parse(googleMapsUrl);
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else {
+        errorSnackBar("Maps Error", "Could not open Google Maps app.");
+      }
+    } else {
+      errorSnackBar("Maps Error", "No active stop location found.");
+    }
   }
 
   @override
   void dispose() {
-    _pulseController.stop();
-    _pulseController.dispose();
+    _mapController?.dispose();
     super.dispose();
   }
 
@@ -104,6 +208,11 @@ class _RouteNavigationScreenState extends State<RouteNavigationScreen>
             );
           }
 
+          _buildMapData(trip);
+          final List<LatLng> points = trip.stops.map((stop) {
+            return LatLng(_parseCoordinate(stop.lat), _parseCoordinate(stop.lng));
+          }).toList();
+
           return SingleChildScrollView(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -113,80 +222,25 @@ class _RouteNavigationScreenState extends State<RouteNavigationScreen>
                   clipBehavior: Clip.none,
                   children: [
                     // The Map Canvas
-                    Container(
+                    SizedBox(
                       height: 220,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [Colors.blue.shade100, Colors.blue.shade50],
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
+                      child: GoogleMap(
+                        initialCameraPosition: CameraPosition(
+                          target: points.isNotEmpty ? points.first : const LatLng(13.0827, 80.2707),
+                          zoom: 12,
                         ),
-                      ),
-                      child: ClipRect(
-                        child: Stack(
-                          children: [
-                            // Custom painted dotted route path
-                            Positioned.fill(
-                              child: CustomPaint(
-                                painter: MapRoutePainter(),
-                              ),
-                            ),
-                            // Map Pins
-                            const Positioned(
-                              top: 40,
-                              left: 30,
-                              child: Icon(Icons.location_on,
-                                  color: Colors.green, size: 20),
-                            ),
-                            const Positioned(
-                              bottom: 60,
-                              right: 40,
-                              child: Icon(Icons.location_on,
-                                  color: Colors.grey, size: 20),
-                            ),
-                            // Current Active Pulse Pin in Center
-                            Center(
-                              child: AnimatedBuilder(
-                                animation: _pulseAnimation,
-                                builder: (context, child) {
-                                  return Stack(
-                                    alignment: Alignment.center,
-                                    children: [
-                                      Container(
-                                        width: 44 * _pulseAnimation.value,
-                                        height: 44 * _pulseAnimation.value,
-                                        decoration: BoxDecoration(
-                                          color: appColor.withOpacity(0.2),
-                                          shape: BoxShape.circle,
-                                        ),
-                                      ),
-                                      const Icon(
-                                        Icons.navigation,
-                                        color: appColor,
-                                        size: 28,
-                                      ),
-                                    ],
-                                  );
-                                },
-                              ),
-                            ),
-                            const Positioned(
-                              bottom: 12,
-                              left: 0,
-                              right: 0,
-                              child: Center(
-                                child: Text(
-                                  "Interactive Map View",
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold,
-                                    color: Color(0xff0C243E),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
+                        markers: _markers,
+                        polylines: _polylines,
+                        onMapCreated: (GoogleMapController controller) {
+                          _mapController = controller;
+                          if (points.isNotEmpty) {
+                            Future.delayed(const Duration(milliseconds: 300), () {
+                              _fitMapBounds(points);
+                            });
+                          }
+                        },
+                        myLocationButtonEnabled: false,
+                        zoomControlsEnabled: true,
                       ),
                     ),
 
@@ -235,12 +289,7 @@ class _RouteNavigationScreenState extends State<RouteNavigationScreen>
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16.0),
                   child: ElevatedButton.icon(
-                    onPressed: () {
-                      successSnackBar(
-                        "Google Maps",
-                        "Opening Google Maps external navigation sequence...",
-                      );
-                    },
+                    onPressed: () => _openGoogleMaps(trip),
                     icon: const Icon(Icons.navigation_outlined,
                         color: Colors.white, size: 20),
                     label: const Text(
