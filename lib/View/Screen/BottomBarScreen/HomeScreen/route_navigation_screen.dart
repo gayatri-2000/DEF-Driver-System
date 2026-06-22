@@ -217,6 +217,7 @@ class _RouteNavigationScreenState extends State<RouteNavigationScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                if (controller.isOffline) _buildOfflineBanner(),
                 // 1. Simulated Map Section with Overlay Card
                 Stack(
                   clipBehavior: Clip.none,
@@ -555,6 +556,47 @@ class _RouteNavigationScreenState extends State<RouteNavigationScreen> {
                     ),
                 ],
               ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOfflineBanner() {
+    return Container(
+      margin: const EdgeInsets.only(left: 16, right: 16, top: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: Colors.amber.shade50,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: Colors.amber.shade200),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.wifi_off_rounded, color: Colors.amber.shade800),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  "Offline Mode",
+                  style: TextStyle(
+                    color: Colors.amber.shade900,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  "Displaying locally cached route details.",
+                  style: TextStyle(
+                    color: Colors.amber.shade800,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
             ),
           ),
         ],

@@ -1,3 +1,5 @@
+import '../Utils/api_parser.dart';
+
 class CompleteOrderResponseModel {
   final String? status;
   final String? message;
@@ -11,8 +13,8 @@ class CompleteOrderResponseModel {
 
   factory CompleteOrderResponseModel.fromJson(Map<String, dynamic> json) {
     return CompleteOrderResponseModel(
-      status: json['status'] as String?,
-      message: json['message'] as String?,
+      status: ApiParser.parseString(json['status']),
+      message: ApiParser.parseString(json['message']),
       order: json['order'] != null
           ? CompleteOrderDetails.fromJson(json['order'] as Map<String, dynamic>)
           : null,
@@ -45,10 +47,10 @@ class CompleteOrderDetails {
 
   factory CompleteOrderDetails.fromJson(Map<String, dynamic> json) {
     return CompleteOrderDetails(
-      orderId: json['order_id'] as int?,
-      orderName: json['order_name'] as String?,
-      status: json['status'] as String?,
-      deliveredDate: json['delivered_date'] as String?,
+      orderId: ApiParser.parseInt(json['order_id']),
+      orderName: ApiParser.parseString(json['order_name']),
+      status: ApiParser.parseString(json['status']),
+      deliveredDate: ApiParser.parseString(json['delivered_date']),
     );
   }
 

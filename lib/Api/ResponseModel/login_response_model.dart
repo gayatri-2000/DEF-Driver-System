@@ -1,3 +1,5 @@
+import '../Utils/api_parser.dart';
+
 class LoginResponseModel {
   final int? uid;
   final String? name;
@@ -21,16 +23,16 @@ class LoginResponseModel {
 
   factory LoginResponseModel.fromJson(Map<String, dynamic> json) {
     return LoginResponseModel(
-      uid: json['uid'] as int?,
-      name: json['name'] as String?,
-      username: json['username'] as String?,
-      profileImage: json['profile_image'] as String?,
-      userType: json['user_type'] as String?,
+      uid: ApiParser.parseInt(json['uid']),
+      name: ApiParser.parseString(json['name']),
+      username: ApiParser.parseString(json['username']),
+      profileImage: ApiParser.parseString(json['profile_image']),
+      userType: ApiParser.parseString(json['user_type']),
       session: json['session'] != null
           ? SessionData.fromJson(json['session'] as Map<String, dynamic>)
           : null,
-      status: json['status'] as String?,
-      message: json['message'] as String?,
+      status: ApiParser.parseString(json['status']),
+      message: ApiParser.parseString(json['message']),
     );
   }
 
@@ -58,8 +60,8 @@ class SessionData {
 
   factory SessionData.fromJson(Map<String, dynamic> json) {
     return SessionData(
-      sid: json['sid'] as String?,
-      expiresAt: json['expires_at'] as String?,
+      sid: ApiParser.parseString(json['sid']),
+      expiresAt: ApiParser.parseString(json['expires_at']),
     );
   }
 

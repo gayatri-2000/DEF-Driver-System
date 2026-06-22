@@ -100,7 +100,11 @@ class APIService {
     log("Response Body: $body");
     
     final trimmedBody = body.trim();
-    if (trimmedBody.startsWith('<!DOCTYPE html>') || trimmedBody.startsWith('<html')) {
+    final isHtml = trimmedBody.startsWith('<!DOCTYPE html>') || 
+                   trimmedBody.startsWith('<html') || 
+                   trimmedBody.toLowerCase().startsWith('<!doctype html');
+                   
+    if (statusCode == 200 && isHtml) {
       throw UnauthorisedException('Session expired or unauthorized request. Please login again.');
     }
 

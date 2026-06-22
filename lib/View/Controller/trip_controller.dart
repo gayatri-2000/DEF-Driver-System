@@ -1,6 +1,8 @@
+import 'dart:convert';
 import 'dart:developer';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
+import '../../View/Constant/shared_prefs.dart';
 import '../../Api/Repo/mock_data.dart';
 import '../../Api/Repo/dashboard_repo.dart';
 import '../../Api/Repo/trip_repo.dart';
@@ -31,6 +33,7 @@ class TripController extends GetxController {
   bool isLoading = false;
   DashboardStatistics? statistics;
   int activeTripId = -1; // Resolved dynamically from trips list
+  bool isOffline = false;
 
   final DashboardRepo _dashboardRepo = DashboardRepo();
   final TripRepo _tripRepo = TripRepo();
@@ -47,6 +50,18 @@ class TripController extends GetxController {
   }
 
   Future<void> loadTrips() async {
+    try {
+      final AuthController authController = Get.find<AuthController>();
+      if (!authController.isLoggedIn) {
+        log("TripController: No logged-in user. Skipping Odoo dashboard fetch.");
+        isLoading = false;
+        update();
+        return;
+      }
+    } catch (e) {
+      log("TripController: AuthController not yet initialized or error: $e");
+    }
+
     isLoading = true;
     update();
 
@@ -55,6 +70,12 @@ class TripController extends GetxController {
       final DashboardResponseModel dashboardData =
           await _dashboardRepo.fetchDashboard();
       statistics = dashboardData.statistics;
+
+      // Save statistics in cache
+      if (statistics != null) {
+        final statsJson = jsonEncode(statistics!.toJson());
+        await preferences.putString('cached_statistics', statsJson);
+      }
 
       // Dynamically resolve activeTripId:
       log("TripController: Checking for in-transit driver trips...");
@@ -74,12 +95,18 @@ class TripController extends GetxController {
         }
       }
 
+      await preferences.putInt('cached_active_trip_id', activeTripId);
+
       if (activeTripId != -1) {
         log("TripController: Fetching Odoo trip details for tripId: $activeTripId...");
         final TripDetailResponseModel tripData =
             await _tripRepo.getTripDetail(activeTripId);
 
         if (tripData.trip != null) {
+          // Save trip details in cache
+          final tripJson = jsonEncode(tripData.toJson());
+          await preferences.putString('cached_trip_detail', tripJson);
+
           final List<RouteStop> stops = [];
 
           // Add Chennai Plant as index 0 (the starting point)
@@ -208,6 +235,10 @@ class TripController extends GetxController {
 
           allTrips = [activeTrip!];
           filteredTrips = List.from(allTrips);
+          isOffline = false;
+
+          // Asynchronously trigger sync of queued offline deliveries
+          syncOfflineQueue();
         } else {
           throw Exception("Odoo trip object is null");
         }
@@ -215,12 +246,10 @@ class TripController extends GetxController {
         activeTrip = null;
         allTrips = [];
         filteredTrips = [];
+        isOffline = false;
       }
     } catch (e) {
-      log("TripController loadTrips error: $e.");
-      activeTrip = null;
-      allTrips = [];
-      filteredTrips = [];
+      log("TripController loadTrips error: $e. Attempting offline fallback...");
 
       if (e is UnauthorisedException) {
         log("TripController: Session expired. Logging out and redirecting to Login...");
@@ -230,20 +259,193 @@ class TripController extends GetxController {
         } catch (err) {
           log("TripController: Error during auto-logout: $err");
         }
+        return;
+      }
+
+      // Offline Cache Fallback
+      final hasLoadedFromCache = await _loadFromOfflineCache();
+      if (hasLoadedFromCache) {
+        isOffline = true;
+        successSnackBar(
+          "Offline Mode",
+          "Displaying locally cached route details.",
+        );
       } else {
+        activeTrip = null;
+        allTrips = [];
+        filteredTrips = [];
+        isOffline = false;
         errorSnackBar(
           "Dashboard Error",
-          e
-              .toString()
-              .replaceAll('FetchDataException:', '')
-              .replaceAll('UnAuthorized Request:', '')
-              .trim(),
+          "Could not connect to server, and no offline cache was found.",
         );
       }
     } finally {
       isLoading = false;
       update();
     }
+  }
+
+  Future<bool> _loadFromOfflineCache() async {
+    try {
+      await preferences.init();
+      final statsStr = preferences.getString('cached_statistics') ?? "";
+      final tripStr = preferences.getString('cached_trip_detail') ?? "";
+      activeTripId = preferences.getInt('cached_active_trip_id') ?? -1;
+
+      if (statsStr.isNotEmpty) {
+        statistics = DashboardStatistics.fromJson(jsonDecode(statsStr));
+      }
+
+      if (tripStr.isNotEmpty && activeTripId != -1) {
+        final Map<String, dynamic> parsed = jsonDecode(tripStr);
+        final tripData = TripDetailResponseModel.fromJson(parsed);
+        if (tripData.trip != null) {
+          final List<RouteStop> stops = [];
+
+          // Add Chennai Plant as index 0 (the starting point)
+          stops.add(RouteStop(
+            index: 0,
+            name: tripData.trip!.plant?.name?.isNotEmpty == true
+                ? tripData.trip!.plant!.name!
+                : "Chennai Plant",
+            lat: "13.0827° N",
+            lng: "80.2707° E",
+            status: "Delivered",
+            address: "10, Plant Road, Industrial Area, Chennai",
+            phone: "+91 44223 34455",
+            contactPerson: "Warehouse In-charge",
+            barrelsQty: 0,
+            cansQty: 0,
+            timeRange: "08:00 AM - 08:30 AM",
+            otpCode: "000000",
+          ));
+
+          final orders = tripData.trip!.orders ?? [];
+          for (int i = 0; i < orders.length; i++) {
+            final order = orders[i];
+
+            String uiStatus = "Upcoming";
+            if (order.deliveryStatus == "delivered") {
+              uiStatus = "Delivered";
+            } else if (order.deliveryStatus == "in_transit") {
+              uiStatus = "Active";
+            } else if (order.deliveryStatus == "dispatched") {
+              uiStatus = "Upcoming";
+            }
+
+            int barrels = 0;
+            int cans = 0;
+            final items = order.items ?? [];
+            for (var item in items) {
+              final name = (item.productName ?? "").toLowerCase();
+              final qty = (item.quantity ?? 0.0).round();
+              if (name.contains("can")) {
+                cans += qty;
+              } else {
+                barrels += qty;
+              }
+            }
+
+            if (barrels == 0 && cans == 0) {
+              if (order.amountTotal != null && order.amountTotal! > 0) {
+                barrels = (order.amountTotal! / 2950.0).round();
+                if (barrels == 0) barrels = 1;
+              } else {
+                barrels = 10;
+              }
+            }
+
+            stops.add(RouteStop(
+              index: order.orderId ?? (i + 1),
+              name: order.customerName?.isNotEmpty == true
+                  ? order.customerName!
+                  : (order.orderName ?? "Order #${order.orderId}"),
+              lat: order.latitude?.toString() ?? "13.0000° N",
+              lng: order.longitude?.toString() ?? "80.0000° E",
+              status: uiStatus,
+              address: order.deliveryAddress?.isNotEmpty == true
+                  ? order.deliveryAddress!
+                  : "Chennai",
+              phone: order.customerMobile?.isNotEmpty == true
+                  ? order.customerMobile!
+                  : "+91 98765 12345",
+              contactPerson: order.customerName ?? "Customer Representative",
+              barrelsQty: barrels,
+              cansQty: cans,
+              timeRange: tripData.trip!.tripDate ?? "Today",
+              otpCode: order.deliveryOtp?.isNotEmpty == true
+                  ? order.deliveryOtp!
+                  : "123456",
+              signatureBase64: order.podUploaded == true ? "uploaded_sig" : null,
+              podPhotoPath: order.podUploaded == true ? "uploaded_photo" : null,
+            ));
+          }
+
+          // Apply local completion queue to stops list
+          final queueStr = preferences.getString('offline_completion_queue') ?? "";
+          if (queueStr.isNotEmpty) {
+            final List<dynamic> queueList = jsonDecode(queueStr);
+            for (var item in queueList) {
+              final int qOrderId = item['order_id'];
+              try {
+                final match = stops.firstWhere((s) => s.index == qOrderId);
+                match.status = "Delivered";
+                match.signatureBase64 = item['signature_base64'];
+                match.podPhotoPath = "offline_queued";
+              } catch (_) {}
+            }
+          }
+
+          String uiTripStatus = "In Progress";
+          if (tripData.trip!.status == "delivered") {
+            uiTripStatus = "Done";
+          } else {
+            uiTripStatus = "In Progress";
+          }
+
+          activeTrip = Trip(
+            id: tripData.trip!.tripSheetNumber?.isNotEmpty == true
+                ? tripData.trip!.tripSheetNumber!
+                : "TS-0${tripData.trip!.tripId}",
+            status: uiTripStatus,
+            date: tripData.trip!.tripDate ?? "Today",
+            stopsCount: tripData.trip!.totalOrders ?? (stops.length - 1),
+            doneCount: stops
+                .where((s) => s.status == "Delivered" && s.index != 0)
+                .length,
+            stops: stops,
+            totalAmount: tripData.trip!.totalAmount ?? 0.0,
+            vehicleReg: tripData.trip!.vehicle?.name?.isNotEmpty == true
+                ? tripData.trip!.vehicle!.name!
+                : "TN 01 AB 1234",
+            totalDistance: "${(stops.length - 1) * 8} km",
+            eta: "2h 15m",
+          );
+
+          final String rawState = tripData.trip!.status ?? "draft";
+          activeTrip = Trip(
+            id: activeTrip!.id,
+            status: activeTrip!.status,
+            date: activeTrip!.date,
+            stopsCount: activeTrip!.stopsCount,
+            doneCount: activeTrip!.doneCount,
+            stops: activeTrip!.stops,
+            totalAmount: activeTrip!.totalAmount,
+            vehicleReg: "${activeTrip!.vehicleReg}|$rawState|$activeTripId",
+            totalDistance: activeTrip!.totalDistance,
+            eta: activeTrip!.eta,
+          );
+
+          allTrips = [activeTrip!];
+          filteredTrips = List.from(allTrips);
+          return true;
+        }
+      }
+    } catch (e) {
+      log("TripController _loadFromOfflineCache error: $e");
+    }
+    return false;
   }
 
   Future<bool> startTrip(int tripId) async {
@@ -313,6 +515,24 @@ class TripController extends GetxController {
   }) async {
     if (activeTrip == null) return false;
 
+    // If we are currently offline, queue it immediately without calling API
+    if (isOffline) {
+      log("TripController: Offline mode active. Queueing delivery for order $stopIndex locally.");
+      await _queueOfflineCompletion(
+        orderId: stopIndex,
+        signatureBase64: signatureBase64,
+        photoBase64: photoBase64,
+        podNotes: podNotes,
+      );
+      _applyLocalDeliveryState(stopIndex, signatureBase64);
+      successSnackBar(
+        "Saved Offline",
+        "Delivery recorded locally. Will sync when online.",
+      );
+      update();
+      return true;
+    }
+
     isLoading = true;
     update();
 
@@ -342,10 +562,47 @@ class TripController extends GetxController {
       }
 
       // 4. Mark locally as delivered and advance state
+      _applyLocalDeliveryState(stopIndex, signatureBase64);
+
+      // Silent reload of trip details from backend
+      try {
+        await loadTrips();
+      } catch (err) {
+        log("TripController: loadTrips failed after POD submission (resuming): $err");
+      }
+
+      return true;
+    } catch (e) {
+      log("TripController submitProofOfDelivery error: $e. Falling back to offline queue.");
+      // If an exception occurs (e.g. 500 server error, network drop), queue it locally!
+      await _queueOfflineCompletion(
+        orderId: stopIndex,
+        signatureBase64: signatureBase64,
+        photoBase64: photoBase64,
+        podNotes: podNotes,
+      );
+      _applyLocalDeliveryState(stopIndex, signatureBase64);
+
+      isOffline = true; // Transition to offline mode on connection failure
+
+      successSnackBar(
+        "Saved Offline",
+        "Server error encountered. Delivery queued locally.",
+      );
+      return true;
+    } finally {
+      isLoading = false;
+      update();
+    }
+  }
+
+  void _applyLocalDeliveryState(int stopIndex, String signatureBase64) {
+    if (activeTrip == null) return;
+    try {
       final stop = activeTrip!.stops.firstWhere((s) => s.index == stopIndex);
       stop.status = "Delivered";
       stop.signatureBase64 = signatureBase64;
-      stop.podPhotoPath = "uploaded_on_odoo"; // Mock path locally
+      stop.podPhotoPath = "offline_queued";
 
       // Recalculate completed stops count (excluding index 0)
       int completed = 0;
@@ -383,29 +640,106 @@ class TripController extends GetxController {
           totalDue: statistics!.totalDue,
         );
       }
+    } catch (e) {
+      log("TripController _applyLocalDeliveryState error: $e");
+    }
+  }
 
-      // Silent reload of trip details from backend
-      try {
-        await loadTrips();
-      } catch (err) {
-        log("TripController: loadTrips failed after POD submission (resuming): $err");
+  Future<void> _queueOfflineCompletion({
+    required int orderId,
+    required String signatureBase64,
+    required String photoBase64,
+    required String podNotes,
+  }) async {
+    try {
+      await preferences.init();
+      final queueStr = preferences.getString('offline_completion_queue') ?? "";
+      List<dynamic> queueList = [];
+      if (queueStr.isNotEmpty) {
+        queueList = jsonDecode(queueStr);
       }
 
-      return true;
+      // Check if orderId is already in queue
+      bool alreadyQueued = queueList.any((item) => item['order_id'] == orderId);
+      if (!alreadyQueued) {
+        queueList.add({
+          'order_id': orderId,
+          'signature_base64': signatureBase64,
+          'photo_base64': photoBase64,
+          'pod_notes': podNotes,
+          'timestamp': DateTime.now().toIso8601String(),
+        });
+        await preferences.putString('offline_completion_queue', jsonEncode(queueList));
+        log("TripController: Order $orderId queued locally.");
+      }
     } catch (e) {
-      log("TripController submitProofOfDelivery error: $e");
-      errorSnackBar(
-        "Upload Failed",
-        e
-            .toString()
-            .replaceAll('FetchDataException:', '')
-            .replaceAll('UnAuthorized Request:', '')
-            .trim(),
-      );
-      return false;
+      log("TripController _queueOfflineCompletion error: $e");
+    }
+  }
+
+  bool _isSyncing = false;
+  Future<void> syncOfflineQueue() async {
+    if (_isSyncing) return;
+    _isSyncing = true;
+    try {
+      await preferences.init();
+      final queueStr = preferences.getString('offline_completion_queue') ?? "";
+      if (queueStr.isEmpty) {
+        _isSyncing = false;
+        return;
+      }
+
+      final List<dynamic> queueList = jsonDecode(queueStr);
+      if (queueList.isEmpty) {
+        _isSyncing = false;
+        return;
+      }
+
+      log("TripController: Found ${queueList.length} queued offline deliveries to sync.");
+      final List<dynamic> remainingQueue = List.from(queueList);
+
+      for (var item in queueList) {
+        final int orderId = item['order_id'];
+        final String signatureBase64 = item['signature_base64'];
+        final String photoBase64 = item['photo_base64'];
+        final String podNotes = item['pod_notes'] ?? '';
+
+        try {
+          log("TripController: Syncing order $orderId: uploading POD...");
+          final UploadPodResponseModel podRes = await _tripRepo.uploadPod(orderId, photoBase64, podNotes);
+          if (podRes.status != 'SUCCESS') {
+            log("TripController: POD sync failed for order $orderId: ${podRes.message}");
+            break; // Stop syncing remaining to maintain order/prevent loop failures
+          }
+
+          log("TripController: Syncing order $orderId: uploading signature...");
+          final UploadSignatureResponseModel sigRes = await _tripRepo.uploadSignature(orderId, signatureBase64);
+          if (sigRes.status != 'SUCCESS') {
+            log("TripController: Signature sync failed for order $orderId: ${sigRes.message}");
+            break;
+          }
+
+          log("TripController: Syncing order $orderId: completing order...");
+          final CompleteOrderResponseModel completeRes = await _tripRepo.completeOrder(orderId);
+          if (completeRes.status != 'SUCCESS') {
+            log("TripController: Completion sync failed for order $orderId: ${completeRes.message}");
+            break;
+          }
+
+          // Successfully synced, remove from queue
+          remainingQueue.removeWhere((q) => q['order_id'] == orderId);
+          await preferences.putString('offline_completion_queue', jsonEncode(remainingQueue));
+          log("TripController: Order $orderId synced successfully with Odoo.");
+          successSnackBar("Sync Success", "Offline delivery for Order #$orderId has been uploaded to Odoo.");
+        } catch (err) {
+          log("TripController: Network error while syncing order $orderId: $err");
+          break; // Stop execution on network error
+        }
+      }
+    } catch (e) {
+      log("TripController syncOfflineQueue error: $e");
     } finally {
-      isLoading = false;
-      update();
+      _isSyncing = false;
     }
   }
 

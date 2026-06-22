@@ -1,3 +1,5 @@
+import '../Utils/api_parser.dart';
+
 class UploadSignatureResponseModel {
   final String? status;
   final String? message;
@@ -9,8 +11,8 @@ class UploadSignatureResponseModel {
 
   factory UploadSignatureResponseModel.fromJson(Map<String, dynamic> json) {
     return UploadSignatureResponseModel(
-      status: json['status'] as String?,
-      message: json['message'] as String?,
+      status: ApiParser.parseString(json['status']),
+      message: ApiParser.parseString(json['message']),
     );
   }
 

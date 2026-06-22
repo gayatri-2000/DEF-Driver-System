@@ -1,4 +1,5 @@
 import 'package:def_driver_system/Api/ResponseModel/trip_detail_response_model.dart';
+import '../Utils/api_parser.dart';
 
 class DriverTripsResponseModel {
   final String? status;
@@ -15,9 +16,9 @@ class DriverTripsResponseModel {
 
   factory DriverTripsResponseModel.fromJson(Map<String, dynamic> json) {
     return DriverTripsResponseModel(
-      status: json['status'] as String?,
-      message: json['message'] as String?,
-      tripCount: json['trip_count'] as int?,
+      status: ApiParser.parseString(json['status']),
+      message: ApiParser.parseString(json['message']),
+      tripCount: ApiParser.parseInt(json['trip_count']),
       trips: json['trips'] != null
           ? (json['trips'] as List)
               .map((i) => DriverTrip.fromJson(i as Map<String, dynamic>))
@@ -75,18 +76,18 @@ class DriverTrip {
 
   factory DriverTrip.fromJson(Map<String, dynamic> json) {
     return DriverTrip(
-      tripId: json['trip_id'] as int?,
-      tripName: json['trip_name'] as String?,
-      tripSheetNumber: json['trip_sheet_number'] as String?,
-      tripDate: json['trip_date'] as String?,
-      status: json['status'] as String?,
-      startTime: json['start_time'] as String?,
-      endTime: json['end_time'] as String?,
-      orderCount: json['order_count'] as int?,
-      totalAmount: (json['total_amount'] as num?)?.toDouble(),
-      totalWeight: (json['total_weight'] as num?)?.toDouble(),
-      vehicleCapacity: (json['vehicle_capacity'] as num?)?.toDouble(),
-      notes: json['notes'] as String?,
+      tripId: ApiParser.parseInt(json['trip_id']),
+      tripName: ApiParser.parseString(json['trip_name']),
+      tripSheetNumber: ApiParser.parseString(json['trip_sheet_number']),
+      tripDate: ApiParser.parseString(json['trip_date']),
+      status: ApiParser.parseString(json['status']),
+      startTime: ApiParser.parseString(json['start_time']),
+      endTime: ApiParser.parseString(json['end_time']),
+      orderCount: ApiParser.parseInt(json['order_count']),
+      totalAmount: ApiParser.parseDouble(json['total_amount']),
+      totalWeight: ApiParser.parseDouble(json['total_weight']),
+      vehicleCapacity: ApiParser.parseDouble(json['vehicle_capacity']),
+      notes: ApiParser.parseString(json['notes']),
       plant: json['plant'] != null
           ? TripEntityReference.fromJson(json['plant'] as Map<String, dynamic>)
           : null,

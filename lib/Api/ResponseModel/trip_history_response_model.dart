@@ -1,3 +1,5 @@
+import '../Utils/api_parser.dart';
+
 class TripHistoryResponseModel {
   final String? status;
   final String? message;
@@ -13,9 +15,9 @@ class TripHistoryResponseModel {
 
   factory TripHistoryResponseModel.fromJson(Map<String, dynamic> json) {
     return TripHistoryResponseModel(
-      status: json['status'] as String?,
-      message: json['message'] as String?,
-      tripCount: json['trip_count'] as int?,
+      status: ApiParser.parseString(json['status']),
+      message: ApiParser.parseString(json['message']),
+      tripCount: ApiParser.parseInt(json['trip_count']),
       trips: json['trips'] != null
           ? (json['trips'] as List)
               .map((i) => HistoryTrip.fromJson(i as Map<String, dynamic>))
@@ -63,16 +65,16 @@ class HistoryTrip {
 
   factory HistoryTrip.fromJson(Map<String, dynamic> json) {
     return HistoryTrip(
-      tripId: json['trip_id'] as int?,
-      tripName: json['trip_name'] as String?,
-      tripDate: json['trip_date'] as String?,
-      plantName: json['plant_name'] as String?,
-      routeName: json['route_name'] as String?,
-      vehicleName: json['vehicle_name'] as String?,
-      totalOrders: json['total_orders'] as int?,
-      totalAmount: (json['total_amount'] as num?)?.toDouble(),
-      totalWeight: (json['total_weight'] as num?)?.toDouble(),
-      status: json['status'] as String?,
+      tripId: ApiParser.parseInt(json['trip_id']),
+      tripName: ApiParser.parseString(json['trip_name']),
+      tripDate: ApiParser.parseString(json['trip_date']),
+      plantName: ApiParser.parseString(json['plant_name']),
+      routeName: ApiParser.parseString(json['route_name']),
+      vehicleName: ApiParser.parseString(json['vehicle_name']),
+      totalOrders: ApiParser.parseInt(json['total_orders']),
+      totalAmount: ApiParser.parseDouble(json['total_amount']),
+      totalWeight: ApiParser.parseDouble(json['total_weight']),
+      status: ApiParser.parseString(json['status']),
     );
   }
 

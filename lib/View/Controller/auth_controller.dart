@@ -78,8 +78,9 @@ class AuthController extends GetxController {
 
         // Save sid if returned in JSON payload and no session ID is currently saved
         final String currentSession = preferences.getString(SharedPreference.sessionId) ?? "";
-        if (currentSession.isEmpty && loginRes.session?.sid != null) {
+        if (currentSession.isEmpty && loginRes.session?.sid != null && loginRes.session!.sid!.isNotEmpty) {
           await preferences.putString(SharedPreference.sessionId, loginRes.session!.sid!);
+          log("AuthController: Saved active authenticated session ID: ${loginRes.session!.sid}");
         }
 
         isLoggedIn = true;

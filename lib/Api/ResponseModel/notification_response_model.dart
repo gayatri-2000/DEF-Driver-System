@@ -1,3 +1,5 @@
+import '../Utils/api_parser.dart';
+
 class NotificationResponseModel {
   final String? status;
   final int? customerId;
@@ -13,14 +15,14 @@ class NotificationResponseModel {
 
   factory NotificationResponseModel.fromJson(Map<String, dynamic> json) {
     return NotificationResponseModel(
-      status: json['status'] as String?,
-      customerId: json['customer_id'] as int?,
+      status: ApiParser.parseString(json['status']),
+      customerId: ApiParser.parseInt(json['customer_id']),
       notifications: json['notifications'] != null
           ? (json['notifications'] as List)
               .map((e) => NotificationItem.fromJson(e as Map<String, dynamic>))
               .toList()
           : null,
-      message: json['message'] as String?,
+      message: ApiParser.parseString(json['message']),
     );
   }
 
@@ -59,14 +61,14 @@ class NotificationItem {
 
   factory NotificationItem.fromJson(Map<String, dynamic> json) {
     return NotificationItem(
-      notificationId: json['notification_id'] as int?,
-      title: json['title'] as String?,
-      message: json['message'] as String?,
-      notificationType: json['notification_type'] as String?,
-      isRead: json['is_read'] as bool?,
-      date: json['date'] as String?,
-      customerId: json['customer_id'] as int?,
-      customerName: json['customer_name'] as String?,
+      notificationId: ApiParser.parseInt(json['notification_id']),
+      title: ApiParser.parseString(json['title']),
+      message: ApiParser.parseString(json['message']),
+      notificationType: ApiParser.parseString(json['notification_type']),
+      isRead: ApiParser.parseBool(json['is_read']),
+      date: ApiParser.parseString(json['date']),
+      customerId: ApiParser.parseInt(json['customer_id']),
+      customerName: ApiParser.parseString(json['customer_name']),
     );
   }
 

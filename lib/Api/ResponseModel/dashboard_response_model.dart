@@ -1,3 +1,5 @@
+import '../Utils/api_parser.dart';
+
 class DashboardResponseModel {
   final String? status;
   final String? message;
@@ -13,8 +15,8 @@ class DashboardResponseModel {
 
   factory DashboardResponseModel.fromJson(Map<String, dynamic> json) {
     return DashboardResponseModel(
-      status: json['status'] as String?,
-      message: json['message'] as String?,
+      status: ApiParser.parseString(json['status']),
+      message: ApiParser.parseString(json['message']),
       statistics: json['statistics'] != null
           ? DashboardStatistics.fromJson(json['statistics'] as Map<String, dynamic>)
           : null,
@@ -67,16 +69,16 @@ class DashboardStatistics {
 
   factory DashboardStatistics.fromJson(Map<String, dynamic> json) {
     return DashboardStatistics(
-      totalOrders: json['total_orders'] as int?,
-      deliveredOrders: json['delivered_orders'] as int?,
-      inTransitOrders: json['in_transit_orders'] as int?,
-      dispatchedOrders: json['dispatched_orders'] as int?,
-      cancelledOrders: json['cancelled_orders'] as int?,
-      paidOrders: json['paid_orders'] as int?,
-      pendingPayments: json['pending_payments'] as int?,
-      partialPayments: json['partial_payments'] as int?,
-      totalAmount: (json['total_amount'] as num?)?.toDouble(),
-      totalDue: (json['total_due'] as num?)?.toDouble(),
+      totalOrders: ApiParser.parseInt(json['total_orders']),
+      deliveredOrders: ApiParser.parseInt(json['delivered_orders']),
+      inTransitOrders: ApiParser.parseInt(json['in_transit_orders']),
+      dispatchedOrders: ApiParser.parseInt(json['dispatched_orders']),
+      cancelledOrders: ApiParser.parseInt(json['cancelled_orders']),
+      paidOrders: ApiParser.parseInt(json['paid_orders']),
+      pendingPayments: ApiParser.parseInt(json['pending_payments']),
+      partialPayments: ApiParser.parseInt(json['partial_payments']),
+      totalAmount: ApiParser.parseDouble(json['total_amount']),
+      totalDue: ApiParser.parseDouble(json['total_due']),
     );
   }
 
@@ -121,15 +123,15 @@ class DashboardOrder {
 
   factory DashboardOrder.fromJson(Map<String, dynamic> json) {
     return DashboardOrder(
-      id: json['id'] as int?,
-      name: json['name'] as String?,
-      customerName: json['customer_name'] as String?,
-      plantName: json['plant_name'] as String?,
-      orderDate: json['order_date'] as String?,
-      amountTotal: (json['amount_total'] as num?)?.toDouble(),
-      amountDue: (json['amount_due'] as num?)?.toDouble(),
-      state: json['state'] as String?,
-      paymentState: json['payment_state'] as String?,
+      id: ApiParser.parseInt(json['id']),
+      name: ApiParser.parseString(json['name']),
+      customerName: ApiParser.parseString(json['customer_name']),
+      plantName: ApiParser.parseString(json['plant_name']),
+      orderDate: ApiParser.parseString(json['order_date']),
+      amountTotal: ApiParser.parseDouble(json['amount_total']),
+      amountDue: ApiParser.parseDouble(json['amount_due']),
+      state: ApiParser.parseString(json['state']),
+      paymentState: ApiParser.parseString(json['payment_state']),
     );
   }
 

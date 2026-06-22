@@ -1,3 +1,5 @@
+import '../Utils/api_parser.dart';
+
 class UploadPodResponseModel {
   final String? status;
   final String? message;
@@ -13,10 +15,10 @@ class UploadPodResponseModel {
 
   factory UploadPodResponseModel.fromJson(Map<String, dynamic> json) {
     return UploadPodResponseModel(
-      status: json['status'] as String?,
-      message: json['message'] as String?,
-      orderId: json['order_id'] as int?,
-      orderName: json['order_name'] as String?,
+      status: ApiParser.parseString(json['status']),
+      message: ApiParser.parseString(json['message']),
+      orderId: ApiParser.parseInt(json['order_id']),
+      orderName: ApiParser.parseString(json['order_name']),
     );
   }
 

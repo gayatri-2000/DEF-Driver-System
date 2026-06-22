@@ -1,9 +1,6 @@
-String? _parseString(dynamic value) {
-  if (value is String) {
-    return value;
-  }
-  return null;
-}
+import '../Utils/api_parser.dart';
+
+String? _parseString(dynamic value) => ApiParser.parseString(value);
 
 class TripDetailResponseModel {
   final String? status;
