@@ -17,6 +17,10 @@ class TripRepo {
 
   Future<TripDetailResponseModel> getTripDetail(int tripId) async {
     final Map<String, dynamic> body = {
+      'jsonrpc': '2.0',
+      'params': {
+        'trip_id': tripId,
+      },
       'trip_id': tripId,
     };
 
@@ -32,6 +36,10 @@ class TripRepo {
 
   Future<StartTripResponseModel> startTrip(int tripId) async {
     final Map<String, dynamic> body = {
+      'jsonrpc': '2.0',
+      'params': {
+        'trip_id': tripId,
+      },
       'trip_id': tripId,
     };
 
@@ -47,6 +55,10 @@ class TripRepo {
 
   Future<DriverTripsResponseModel> getDriverTrips(String status) async {
     final Map<String, dynamic> body = {
+      'jsonrpc': '2.0',
+      'params': {
+        'status': status,
+      },
       'status': status,
     };
 
@@ -62,6 +74,10 @@ class TripRepo {
 
   Future<SendDeliveryOtpResponseModel> sendDeliveryOtp(int orderId) async {
     final Map<String, dynamic> body = {
+      'jsonrpc': '2.0',
+      'params': {
+        'order_id': orderId,
+      },
       'order_id': orderId,
     };
 
@@ -77,6 +93,11 @@ class TripRepo {
 
   Future<VerifyOtpResponseModel> verifyDeliveryOtp(int orderId, String otp) async {
     final Map<String, dynamic> body = {
+      'jsonrpc': '2.0',
+      'params': {
+        'order_id': orderId,
+        'otp': otp,
+      },
       'order_id': orderId,
       'otp': otp,
     };
@@ -93,6 +114,12 @@ class TripRepo {
 
   Future<UploadPodResponseModel> uploadPod(int orderId, String podImage, String podNotes) async {
     final Map<String, dynamic> body = {
+      'jsonrpc': '2.0',
+      'params': {
+        'order_id': orderId,
+        'pod_image': podImage,
+        'pod_notes': podNotes,
+      },
       'order_id': orderId,
       'pod_image': podImage,
       'pod_notes': podNotes,
@@ -110,6 +137,11 @@ class TripRepo {
 
   Future<UploadSignatureResponseModel> uploadSignature(int orderId, String signature) async {
     final Map<String, dynamic> body = {
+      'jsonrpc': '2.0',
+      'params': {
+        'order_id': orderId,
+        'signature': signature,
+      },
       'order_id': orderId,
       'signature': signature,
     };
@@ -126,6 +158,10 @@ class TripRepo {
 
   Future<CompleteOrderResponseModel> completeOrder(int orderId) async {
     final Map<String, dynamic> body = {
+      'jsonrpc': '2.0',
+      'params': {
+        'order_id': orderId,
+      },
       'order_id': orderId,
     };
 
@@ -143,7 +179,10 @@ class TripRepo {
     final response = await _apiService.getResponse(
       url: ApiRouts.tripHistoryAPI,
       apiType: APIType.aPost,
-      body: {},
+      body: {
+        'jsonrpc': '2.0',
+        'params': {},
+      },
     );
 
     log("TripRepo getTripHistory Response: $response");
@@ -152,6 +191,10 @@ class TripRepo {
 
   Future<TripHistoryDetailResponseModel> getTripHistoryDetail(int tripId) async {
     final Map<String, dynamic> body = {
+      'jsonrpc': '2.0',
+      'params': {
+        'trip_id': tripId,
+      },
       'trip_id': tripId,
     };
 

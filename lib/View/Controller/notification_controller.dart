@@ -26,9 +26,9 @@ class NotificationController extends GetxController {
       await preferences.init();
       final String uidStr = preferences.getString(SharedPreference.userId) ?? "";
       if (uidStr.isNotEmpty) {
-        final int customerId = int.tryParse(uidStr) ?? 0;
-        log("NotificationController: Fetching notifications for customer ID: $customerId");
-        final NotificationResponseModel res = await _notificationRepo.getNotifications(customerId);
+        final int driverId = int.tryParse(uidStr) ?? 0;
+        log("NotificationController: Fetching notifications for driver ID: $driverId");
+        final NotificationResponseModel res = await _notificationRepo.getNotifications(driverId);
         if (res.status == "SUCCESS") {
           notifications = res.notifications ?? [];
           log("NotificationController: Loaded ${notifications.length} notifications.");
@@ -57,8 +57,8 @@ class NotificationController extends GetxController {
           notificationType: item.notificationType,
           isRead: true,
           date: item.date,
-          customerId: item.customerId,
-          customerName: item.customerName,
+          driverId: item.driverId,
+          driverName: item.driverName,
         );
       }
     }
@@ -77,8 +77,8 @@ class NotificationController extends GetxController {
           notificationType: item.notificationType,
           isRead: true,
           date: item.date,
-          customerId: item.customerId,
-          customerName: item.customerName,
+          driverId: item.driverId,
+          driverName: item.driverName,
         );
         update();
       }

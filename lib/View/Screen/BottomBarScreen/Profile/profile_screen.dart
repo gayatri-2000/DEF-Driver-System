@@ -4,6 +4,7 @@ import '../../../Controller/auth_controller.dart';
 import '../../../Constant/app_color.dart';
 import '../../Login/login_screen.dart';
 import '../../../Utils/app_layout.dart';
+import 'package:def_driver_system/View/Controller/trip_controller.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -18,235 +19,202 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final driver = _authController.currentDriver;
+    return GetBuilder<TripController>(
+      init: Get.isRegistered<TripController>()
+          ? Get.find<TripController>()
+          : Get.put(TripController()),
+      builder: (tripController) {
+        final driver = _authController.currentDriver;
 
-    // Fallback static driver info if session has no driver
-    final name = driver?.name ?? "Rajesh Kumar";
-    final id = driver?.id ?? "DRV12345";
-    final rating = driver?.rating ?? 4.8;
-    final totalDeliveries = driver?.totalDeliveries ?? 2847;
-    final onTimeRate = driver?.onTimeRate ?? 98.0;
-    final thisMonthDeliveries = driver?.thisMonthDeliveries ?? 156;
-    final phone = driver?.phone ?? "+91 98765 43210";
-    final email = driver?.email ?? "rajesh.kumar@defdelivery.com";
-    final baseLocation = driver?.baseLocation ?? "Chennai Plant";
-    final vehicleReg = driver?.vehicleReg ?? "TN 01 AB 1234";
-    final vehicleLicense = driver?.vehicleLicense ?? "TN-1234567890";
+        final name = driver?.name ?? "Driver";
+        final id = driver?.id ?? "";
+        final phone = driver?.phone ?? "";
+        final email = driver?.email ?? "";
 
-    return Scaffold(
-      backgroundColor: Colors.grey.shade50,
-      body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Blue Profile Header Area
-            Container(
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [appColor, Color(0xff0950C4)],
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                ),
-              ),
-              padding: const EdgeInsets.only(top: 60, bottom: 40, left: 24, right: 24),
-              child: Column(
-                children: [
-                  // Profile Photo/Avatar
-                  Row(
+        // Real dynamic stats from TripController
+        final stats = tripController.statistics;
+        final totalOrders = stats?.totalOrders ?? 0;
+        final deliveredOrders = stats?.deliveredOrders ?? 0;
+        final pendingPayments = stats?.pendingPayments ?? 0;
+
+        String baseLocation = "Chennai Plant";
+        if (tripController.activeTrip != null &&
+            tripController.activeTrip!.stops.isNotEmpty) {
+          baseLocation = tripController.activeTrip!.stops[0].name;
+        }
+
+        String vehicleReg = "No Assigned Vehicle";
+        if (tripController.activeTrip != null) {
+          final reg = tripController.activeTrip!.vehicleReg.split('|')[0];
+          if (reg.isNotEmpty) {
+            vehicleReg = reg;
+          }
+        }
+
+        return Scaffold(
+          backgroundColor: Colors.grey.shade50,
+          body: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Blue Profile Header Area
+                Container(
+                  decoration: const BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [appColor, Color(0xff0950C4)],
+                      begin: Alignment.topCenter,
+                      end: Alignment.bottomCenter,
+                    ),
+                  ),
+                  padding: const EdgeInsets.only(top: 60, bottom: 40, left: 24, right: 24),
+                  child: Column(
                     children: [
-                      Container(
-                        width: 80,
-                        height: 80,
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white.withOpacity(0.3), width: 3),
-                        ),
-                        child: const Center(
-                          child: Icon(
-                            Icons.person,
-                            size: 48,
-                            color: appColor,
+                      // Profile Photo/Avatar
+                      Row(
+                        children: [
+                          Container(
+                            width: 80,
+                            height: 80,
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                              border: Border.all(color: Colors.white.withOpacity(0.3), width: 3),
+                            ),
+                            child: const Center(
+                              child: Icon(
+                                Icons.person,
+                                size: 48,
+                                color: appColor,
+                              ),
+                            ),
                           ),
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      // Name & ID
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              name,
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 22,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Text(
-                              "ID: $id",
-                              style: TextStyle(
-                                color: Colors.white.withOpacity(0.8),
-                                fontSize: 14,
-                              ),
-                            ),
-                            const SizedBox(height: 6),
-                            // Rating Badge
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withOpacity(0.2),
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  const Icon(Icons.star, color: Colors.amber, size: 14),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    rating.toString(),
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 12,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Three Metrics Grid (Overlaying top)
-                  Transform.translate(
-                    offset: const Offset(0, -24),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        _buildStatBox(Icons.bookmark_outline, totalDeliveries.toString(), "Deliveries", Colors.blue),
-                        _buildStatBox(Icons.access_time, "${onTimeRate.toStringAsFixed(0)}%", "On-Time", Colors.green),
-                        _buildStatBox(Icons.trending_up, thisMonthDeliveries.toString(), "This Month", Colors.purple),
-                      ],
-                    ),
-                  ),
-
-                  // Contact Information Heading
-                  const Text(
-                    "Contact Information",
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xff0C243E),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-
-                  // Contact Info Card
-                  Container(
-                    decoration: _buildSectionBoxDecoration(),
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    child: Column(
-                      children: [
-                        _buildInfoTile(Icons.phone_outlined, Colors.blue.shade50, Colors.blue, "Phone Number", phone),
-                        const Divider(height: 1, indent: 56),
-                        _buildInfoTile(Icons.mail_outline_rounded, Colors.green.shade50, Colors.green, "Email Address", email),
-                        const Divider(height: 1, indent: 56),
-                        _buildInfoTile(Icons.location_on_outlined, Colors.purple.shade50, Colors.purple, "Base Location", baseLocation),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 20),
-
-                  // Vehicle Information Heading
-                  const Text(
-                    "Vehicle Information",
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xff0C243E),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-
-                  // Vehicle Info Card
-                  Container(
-                    decoration: _buildSectionBoxDecoration(),
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      children: [
-                        Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(10),
-                              decoration: BoxDecoration(
-                                color: appColor.withOpacity(0.1),
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(Icons.local_shipping_outlined, color: appColor, size: 24),
-                            ),
-                            const SizedBox(width: 16),
-                            Column(
+                          const SizedBox(width: 16),
+                          // Name & ID
+                          Expanded(
+                            child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  vehicleReg,
+                                  name,
                                   style: const TextStyle(
-                                    fontSize: 16,
+                                    color: Colors.white,
+                                    fontSize: 22,
                                     fontWeight: FontWeight.bold,
-                                    color: Color(0xff0C243E),
                                   ),
                                 ),
-                                const Text(
-                                  "Assigned Vehicle",
-                                  style: TextStyle(fontSize: 12, color: Colors.grey),
+                                const SizedBox(height: 4),
+                                Text(
+                                  "ID: $id",
+                                  style: TextStyle(
+                                    color: Colors.white.withOpacity(0.8),
+                                    fontSize: 14,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Three Metrics Grid (Overlaying top)
+                      Transform.translate(
+                        offset: const Offset(0, -24),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            _buildStatBox(Icons.check_circle_outline, deliveredOrders.toString(), "Delivered", Colors.blue),
+                            _buildStatBox(Icons.local_shipping_outlined, totalOrders.toString(), "Total Orders", Colors.green),
+                            _buildStatBox(Icons.payment_outlined, pendingPayments.toString(), "Pending Pay", Colors.purple),
+                          ],
+                        ),
+                      ),
+
+                      // Contact Information Heading
+                      const Text(
+                        "Contact Information",
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xff0C243E),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+
+                      // Contact Info Card
+                      Container(
+                        decoration: _buildSectionBoxDecoration(),
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        child: Column(
+                          children: [
+                            _buildInfoTile(Icons.person_outline, Colors.blue.shade50, Colors.blue, "Username", email),
+                            const Divider(height: 1, indent: 56),
+                            _buildInfoTile(Icons.phone_outlined, Colors.green.shade50, Colors.green, "Mobile Phone", phone),
+                            const Divider(height: 1, indent: 56),
+                            _buildInfoTile(Icons.location_on_outlined, Colors.purple.shade50, Colors.purple, "Base Location", baseLocation),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+
+                      // Vehicle Information Heading
+                      const Text(
+                        "Vehicle Information",
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xff0C243E),
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+
+                      // Vehicle Info Card
+                      Container(
+                        decoration: _buildSectionBoxDecoration(),
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                    color: appColor.withOpacity(0.1),
+                                    shape: BoxShape.circle,
+                                  ),
+                                  child: const Icon(Icons.local_shipping_outlined, color: appColor, size: 24),
+                                ),
+                                const SizedBox(width: 16),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      vehicleReg,
+                                      style: const TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                        color: Color(0xff0C243E),
+                                      ),
+                                    ),
+                                    const Text(
+                                      "Assigned Vehicle",
+                                      style: TextStyle(fontSize: 12, color: Colors.grey),
+                                    ),
+                                  ],
                                 ),
                               ],
                             ),
                           ],
                         ),
-                        const SizedBox(height: 12),
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                          decoration: BoxDecoration(
-                            color: textFieldColor,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              const Text(
-                                "License Number",
-                                style: TextStyle(fontSize: 13, color: Colors.grey, fontWeight: FontWeight.w500),
-                              ),
-                              Text(
-                                vehicleLicense,
-                                style: const TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.bold,
-                                  color: Color(0xff0C243E),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 20),
+                      ),
+                      const SizedBox(height: 20),
 
                   // Settings Heading
                   const Text(
@@ -354,7 +322,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
       ),
     );
-  }
+  },
+);
+}
 
   BoxDecoration _buildSectionBoxDecoration() {
     return BoxDecoration(

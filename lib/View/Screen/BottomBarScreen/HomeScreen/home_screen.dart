@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:intl/intl.dart';
 import 'package:def_driver_system/View/Controller/trip_controller.dart';
 import 'package:def_driver_system/View/Constant/app_color.dart';
 import 'package:def_driver_system/Api/Repo/mock_data.dart';
-import 'package:def_driver_system/View/Screen/Delivery/delivery_verification_screen.dart';
-import 'route_navigation_screen.dart';
 import 'package:def_driver_system/View/Screen/BottomBarScreen/Notification/notification_screen.dart';
 import 'package:def_driver_system/View/Controller/notification_controller.dart';
 
@@ -22,10 +21,10 @@ class HomeScreen extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: appColor,
         elevation: 0,
-        title: const Column(
+        title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
+            const Text(
               "Today's Trips",
               style: TextStyle(
                 color: Colors.white,
@@ -33,12 +32,27 @@ class HomeScreen extends StatelessWidget {
                 fontWeight: FontWeight.bold,
               ),
             ),
-            Text(
-              "May 25, 2026",
-              style: TextStyle(
-                color: Colors.white70,
-                fontSize: 12,
-              ),
+            GetBuilder<TripController>(
+              builder: (controller) {
+                String dateStr = DateFormat("MMMM d, yyyy").format(DateTime.now());
+                final tripDate = controller.activeTrip?.date;
+                if (tripDate != null && tripDate != "Today") {
+                  try {
+                    // Try parsing "YYYY-MM-DD" style date
+                    final parsed = DateTime.parse(tripDate);
+                    dateStr = DateFormat("MMMM d, yyyy").format(parsed);
+                  } catch (_) {
+                    dateStr = tripDate;
+                  }
+                }
+                return Text(
+                  dateStr,
+                  style: const TextStyle(
+                    color: Colors.white70,
+                    fontSize: 12,
+                  ),
+                );
+              },
             ),
           ],
         ),
@@ -85,54 +99,13 @@ class HomeScreen extends StatelessWidget {
             );
           }
 
-          final trip = controller.activeTrip;
+          final assignedTrips = [
+            ...controller.inTransitTrips,
+            ...controller.pendingTrips,
+          ];
+          final completedTrips = controller.completedTripsList;
 
-          if (trip == null) {
-            return RefreshIndicator(
-              onRefresh: () => controller.loadTrips(),
-              child: ListView(
-                physics: const AlwaysScrollableScrollPhysics(),
-                children: [
-                  if (controller.isOffline)
-                    Padding(
-                      padding: const EdgeInsets.only(left: 16.0, right: 16.0, top: 16.0),
-                      child: _buildOfflineBanner(),
-                    ),
-                  SizedBox(height: MediaQuery.of(context).size.height * 0.25),
-                  Center(
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.local_shipping_outlined,
-                            size: 64, color: greyTextColor),
-                        const SizedBox(height: 16),
-                        const Text(
-                          "No Active Orders",
-                          style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: Color(0xff0C243E)),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          "You have completed all trips for today.",
-                          style: TextStyle(color: greyTextColor),
-                        ),
-                        const SizedBox(height: 16),
-                        ElevatedButton(
-                          onPressed: () => controller.loadTrips(),
-                          style: ElevatedButton.styleFrom(
-                              backgroundColor: appColor),
-                          child: const Text("Reload Dashboard",
-                              style: TextStyle(color: Colors.white)),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            );
-          }
+          final showList = controller.selectedTripTab == 0 ? assignedTrips : completedTrips;
 
           return RefreshIndicator(
             onRefresh: () => controller.loadTrips(),
@@ -144,23 +117,20 @@ class HomeScreen extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     if (controller.isOffline) _buildOfflineBanner(),
-                    // 1. Grid of 4 colorful metrics cards
+                    
+                    // 1. Grid of 4 metrics cards
                     Row(
                       children: [
                         _buildMetricCard(
                           icon: Icons.inventory_2_outlined,
-                          value: (controller.statistics?.totalOrders ??
-                                  trip.stopsCount)
-                              .toString(),
+                          value: (controller.statistics?.totalOrders ?? 0).toString(),
                           label: "Total Orders",
                           color: appColor,
                         ),
                         const SizedBox(width: 12),
                         _buildMetricCard(
                           icon: Icons.check_circle_outline,
-                          value: (controller.statistics?.deliveredOrders ??
-                                  trip.doneCount)
-                              .toString(),
+                          value: (controller.statistics?.deliveredOrders ?? 0).toString(),
                           label: "Delivered",
                           color: greenColor,
                         ),
@@ -171,160 +141,138 @@ class HomeScreen extends StatelessWidget {
                       children: [
                         _buildMetricCard(
                           icon: Icons.local_shipping_outlined,
-                          value: (controller.statistics?.inTransitOrders ?? 0)
-                              .toString(),
+                          value: (controller.statistics?.inTransitOrders ?? 0).toString(),
                           label: "In Transit",
                           color: orangeColor,
                         ),
                         const SizedBox(width: 12),
                         _buildMetricCard(
                           icon: Icons.assignment_turned_in_outlined,
-                          value: (controller.statistics?.dispatchedOrders ?? 0)
-                              .toString(),
+                          value: (controller.statistics?.dispatchedOrders ?? 0).toString(),
                           label: "Dispatched",
                           color: Colors.purple,
                         ),
                       ],
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 24),
 
-                    // 2. Active Trip Info Card
+                    // 2. Custom Tabs Toggle
                     Container(
-                      decoration: _buildCardBoxDecoration(),
-                      padding: const EdgeInsets.all(16),
-                      child: Builder(builder: (context) {
-                        final parts = trip.vehicleReg.split('|');
-                        final String vehicleName =
-                            parts.isNotEmpty ? parts[0] : trip.vehicleReg;
-                        final String rawState =
-                            parts.length > 1 ? parts[1] : "in_transit";
-                        final int tripId = parts.length > 2
-                            ? (int.tryParse(parts[2]) ?? 1)
-                            : 1;
-                        final bool canStart =
-                            rawState == "draft" || rawState == "confirmed";
-
-                        return Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                const Text(
-                                  "Active Route Info",
-                                  style: TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.bold,
-                                    color: Color(0xff0C243E),
-                                  ),
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade200,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: () => controller.changeTripTab(0),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                decoration: BoxDecoration(
+                                  color: controller.selectedTripTab == 0 ? Colors.white : Colors.transparent,
+                                  borderRadius: BorderRadius.circular(10),
+                                  boxShadow: controller.selectedTripTab == 0
+                                      ? [
+                                          BoxShadow(
+                                            color: Colors.black.withOpacity(0.05),
+                                            blurRadius: 4,
+                                            offset: const Offset(0, 2),
+                                          )
+                                        ]
+                                      : null,
                                 ),
-                                Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 8, vertical: 4),
-                                  decoration: BoxDecoration(
-                                    color: canStart
-                                        ? Colors.amber.shade50
-                                        : const Color(0xffE6F4EA),
-                                    borderRadius: BorderRadius.circular(6),
-                                  ),
+                                child: Center(
                                   child: Text(
-                                    rawState.toUpperCase(),
+                                    "Assigned (${assignedTrips.length})",
                                     style: TextStyle(
-                                      color: canStart
-                                          ? Colors.amber.shade800
-                                          : greenColor,
-                                      fontSize: 10,
+                                      color: controller.selectedTripTab == 0 ? const Color(0xff0C243E) : Colors.grey.shade600,
                                       fontWeight: FontWeight.bold,
+                                      fontSize: 13,
                                     ),
                                   ),
                                 ),
-                              ],
+                              ),
                             ),
-                            const SizedBox(height: 4),
-                            Text(
-                              "Vehicle ID: $vehicleName",
-                              style:
-                                  TextStyle(fontSize: 12, color: greyTextColor),
-                            ),
-                            const SizedBox(height: 12),
-                            Row(
-                              children: [
-                                Icon(Icons.payment_outlined,
-                                    size: 16, color: greyTextColor),
-                                const SizedBox(width: 6),
-                                Text(
-                                  "Total Registered Revenue: ${_formatCurrency(trip.totalAmount)}",
-                                  style: TextStyle(
-                                      fontSize: 12,
-                                      color: greyTextColor,
-                                      fontWeight: FontWeight.bold),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 16),
-                            ElevatedButton.icon(
-                              onPressed: () {
-                                if (canStart) {
-                                  controller.startTrip(tripId);
-                                } else {
-                                  Get.to(() => const RouteNavigationScreen());
-                                }
+                          ),
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: () {
+                                controller.changeTripTab(1);
+                                controller.fetchHistoryTrips();
                               },
-                              icon: Icon(
-                                canStart
-                                    ? Icons.play_arrow_rounded
-                                    : Icons.navigation_outlined,
-                                size: 18,
-                                color: Colors.white,
-                              ),
-                              label: Text(
-                                canStart
-                                    ? "Start Trip"
-                                    : "Start Navigation Map",
-                                style: const TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.bold,
-                                    color: Colors.white),
-                              ),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor:
-                                    canStart ? greenColor : appColor,
-                                padding:
-                                    const EdgeInsets.symmetric(vertical: 14),
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(vertical: 12),
+                                decoration: BoxDecoration(
+                                  color: controller.selectedTripTab == 1 ? Colors.white : Colors.transparent,
+                                  borderRadius: BorderRadius.circular(10),
+                                  boxShadow: controller.selectedTripTab == 1
+                                      ? [
+                                          BoxShadow(
+                                            color: Colors.black.withOpacity(0.05),
+                                            blurRadius: 4,
+                                            offset: const Offset(0, 2),
+                                          )
+                                        ]
+                                      : null,
                                 ),
-                                elevation: 0,
+                                child: Center(
+                                  child: Text(
+                                    "Completed (${completedTrips.length})",
+                                    style: TextStyle(
+                                      color: controller.selectedTripTab == 1 ? const Color(0xff0C243E) : Colors.grey.shade600,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 13,
+                                    ),
+                                  ),
+                                ),
                               ),
                             ),
-                          ],
-                        );
-                      }),
-                    ),
-                    const SizedBox(height: 24),
-
-                    // 3. Delivery Stops Section Header
-                    const Text(
-                      "Current Delivery Tasks",
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xff0C243E),
+                          ),
+                        ],
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 20),
 
-                    // 4. Stop Cards List (Filter out Chennai Plant at index 0)
-                    ListView.builder(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      itemCount: trip.stops.length - 1,
-                      itemBuilder: (context, index) {
-                        // index corresponds to stopIndex - 1 because we skipped stop 0 (Chennai Plant)
-                        final stop = trip.stops[index + 1];
-                        return _buildStopCard(context, stop);
-                      },
-                    ),
+                    // 3. Trips List
+                    if (showList.isEmpty)
+                      Center(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 40.0),
+                          child: Column(
+                            children: [
+                              Icon(Icons.local_shipping_outlined, size: 48, color: Colors.grey.shade300),
+                              const SizedBox(height: 12),
+                              Text(
+                                controller.selectedTripTab == 0 ? "No Assigned Trips" : "No Completed Trips",
+                                style: TextStyle(
+                                  color: Colors.grey.shade600,
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                controller.selectedTripTab == 0
+                                    ? "Any new routes assigned will appear here."
+                                    : "Completed route sheets will display here.",
+                                style: TextStyle(color: Colors.grey.shade400, fontSize: 12),
+                              ),
+                            ],
+                          ),
+                        ),
+                      )
+                    else
+                      ListView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: showList.length,
+                        itemBuilder: (context, index) {
+                          final trip = showList[index];
+                          return _buildTripCard(context, trip, controller);
+                        },
+                      ),
                   ],
                 ),
               ),
@@ -353,8 +301,8 @@ class HomeScreen extends StatelessWidget {
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
-              color: color.withOpacity(0.2),
-              blurRadius: 8,
+              color: color.withOpacity(0.15),
+              blurRadius: 6,
               offset: const Offset(0, 3),
             ),
           ],
@@ -362,18 +310,13 @@ class HomeScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Icon(icon, color: Colors.white, size: 24),
-              ],
-            ),
+            Icon(icon, color: Colors.white, size: 22),
             const SizedBox(height: 12),
             Text(
               value,
               style: const TextStyle(
                 color: Colors.white,
-                fontSize: 24,
+                fontSize: 22,
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -391,43 +334,27 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildStopCard(BuildContext context, RouteStop stop) {
-    bool isCompleted = stop.status == "Delivered";
-    bool isInProgress = stop.status == "Active";
-    bool isPending = stop.status == "Upcoming";
+  Widget _buildTripCard(BuildContext context, Trip trip, TripController controller) {
+    final bool isPending = trip.status == "Pending";
+    final bool isInTransit = trip.status == "In Progress";
+    final bool isCompleted = trip.status == "Done";
 
-    // Circular badge styling
     Color badgeBg = Colors.grey.shade100;
     Color badgeText = Colors.grey.shade600;
-    Color statusBg = Colors.grey.shade100;
-    Color statusText = Colors.grey;
-    String statusLabel = "Pending";
-
-    if (isCompleted) {
-      badgeBg = const Color(0xffE6F4EA);
-      badgeText = greenColor;
-      statusBg = const Color(0xffE6F4EA);
-      statusText = greenColor;
-      statusLabel = "Completed";
-    } else if (isInProgress) {
+    if (isInTransit) {
       badgeBg = appColor.withOpacity(0.1);
       badgeText = appColor;
-      statusBg = appColor.withOpacity(0.1);
-      statusText = appColor;
-      statusLabel = "In Progress";
+    } else if (isCompleted) {
+      badgeBg = const Color(0xffE6F4EA);
+      badgeText = greenColor;
+    } else if (isPending) {
+      badgeBg = Colors.amber.shade50;
+      badgeText = Colors.amber.shade800;
     }
 
-    // Prepare Quantity string
-    String qtyString = "";
-    if (stop.barrelsQty > 0 && stop.cansQty > 0) {
-      qtyString = "${stop.barrelsQty} Barrels + ${stop.cansQty} Cans";
-    } else if (stop.barrelsQty > 0) {
-      qtyString = "${stop.barrelsQty} Barrels";
-    } else if (stop.cansQty > 0) {
-      qtyString = "${stop.cansQty} Cans";
-    } else {
-      qtyString = "0 Items";
-    }
+    // Decode Route or Vehicle reg cleanly
+    final parts = trip.vehicleReg.split('|');
+    final String routeName = parts.isNotEmpty ? parts[0] : trip.vehicleReg;
 
     return Container(
       decoration: _buildCardBoxDecoration(),
@@ -436,114 +363,151 @@ class HomeScreen extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Row 1: Stop Number Badge, Pump Name, Status Badge
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Container(
-                width: 32,
-                height: 32,
-                decoration: BoxDecoration(
-                  color: badgeBg,
-                  shape: BoxShape.circle,
-                ),
-                child: Center(
-                  child: Text(
-                    stop.index.toString(),
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: badgeText,
-                      fontSize: 13,
-                    ),
-                  ),
+              Text(
+                trip.id,
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xff0C243E),
                 ),
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  stop.name,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xff0C243E),
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              const SizedBox(width: 8),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: statusBg,
+                  color: badgeBg,
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Text(
-                  statusLabel,
+                  trip.status.toUpperCase(),
                   style: TextStyle(
-                    color: statusText,
-                    fontSize: 10,
+                    color: badgeText,
+                    fontSize: 9,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-
-          // Address info
-          Text(
-            stop.address,
-            style: TextStyle(fontSize: 12, color: greyTextColor),
-          ),
-          const SizedBox(height: 10),
-
-          // Time range info
-          Row(
-            children: [
-              Icon(Icons.access_time, size: 14, color: greyTextColor),
-              const SizedBox(width: 6),
-              Text(
-                stop.timeRange,
-                style: TextStyle(
-                    fontSize: 12,
-                    color: greyTextColor,
-                    fontWeight: FontWeight.w500),
               ),
             ],
           ),
           const SizedBox(height: 12),
-
-          // Quantity Block
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: textFieldColor,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  "Quantity",
-                  style: TextStyle(
-                      fontSize: 11,
-                      color: Colors.grey,
-                      fontWeight: FontWeight.bold),
+          Row(
+            children: [
+              Icon(Icons.route_outlined, size: 16, color: greyTextColor),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  "Route: $routeName",
+                  style: TextStyle(fontSize: 13, color: greyTextColor),
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  qtyString,
-                  style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xff0C243E)),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
-          const SizedBox(height: 14),
-
-          // Bottom Action Button
+          const SizedBox(height: 6),
+          Row(
+            children: [
+              Icon(Icons.calendar_today_outlined, size: 16, color: greyTextColor),
+              const SizedBox(width: 8),
+              Text(
+                trip.date,
+                style: TextStyle(fontSize: 13, color: greyTextColor),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          const Divider(height: 1),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text("Stops", style: TextStyle(fontSize: 11, color: Colors.grey)),
+                  const SizedBox(height: 2),
+                  Text(
+                    "${trip.stopsCount} Stops",
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xff0C243E),
+                    ),
+                  ),
+                ],
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  const Text("Total Revenue", style: TextStyle(fontSize: 11, color: Colors.grey)),
+                  const SizedBox(height: 2),
+                  Text(
+                    _formatCurrency(trip.totalAmount),
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      color: appColor,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          if (isPending)
+            ElevatedButton(
+              onPressed: () => controller.startTrip(trip.dbTripId ?? 1),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: greenColor,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                elevation: 0,
+              ),
+              child: const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.play_arrow_rounded, color: Colors.white, size: 18),
+                  SizedBox(width: 6),
+                  Text(
+                    "Start Trip",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          if (isInTransit)
+            ElevatedButton(
+              onPressed: () => controller.selectTripAndGo(trip.dbTripId ?? 1),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: appColor,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                elevation: 0,
+              ),
+              child: const Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.navigation_outlined, color: Colors.white, size: 16),
+                  SizedBox(width: 6),
+                  Text(
+                    "Resume / View Stops",
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           if (isCompleted)
             Container(
               padding: const EdgeInsets.symmetric(vertical: 12),
@@ -555,65 +519,17 @@ class HomeScreen extends StatelessWidget {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.check_circle_outline, color: greenColor, size: 18),
+                  Icon(Icons.check_circle_outline, color: greenColor, size: 16),
                   const SizedBox(width: 8),
                   Text(
-                    "Delivered Successfully",
+                    "Trip Completed Successfully",
                     style: TextStyle(
                       color: greenColor,
-                      fontSize: 13,
+                      fontSize: 12,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                 ],
-              ),
-            ),
-
-          if (isInProgress)
-            ElevatedButton(
-              onPressed: () {
-                Get.to(() => DeliveryVerificationScreen(
-                      stopIndex: stop.index,
-                      pumpName: stop.name,
-                      barrelsQty: stop.barrelsQty,
-                      cansQty: stop.cansQty,
-                      expectedOtp: stop.otpCode,
-                    ));
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: appColor,
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                elevation: 0,
-              ),
-              child: const Text(
-                "Complete Delivery",
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 13,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-
-          if (isPending)
-            Container(
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              decoration: BoxDecoration(
-                color: Colors.grey.shade100,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Center(
-                child: Text(
-                  "Waiting",
-                  style: TextStyle(
-                    color: Colors.grey,
-                    fontSize: 13,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
               ),
             ),
         ],

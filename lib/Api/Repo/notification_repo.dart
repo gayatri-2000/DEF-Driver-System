@@ -6,9 +6,15 @@ import 'package:def_driver_system/Api/Services/base_service.dart';
 class NotificationRepo {
   final APIService _apiService = APIService();
 
-  Future<NotificationResponseModel> getNotifications(int customerId) async {
+  Future<NotificationResponseModel> getNotifications(int driverId) async {
     final Map<String, dynamic> body = {
-      'customer_id': customerId,
+      'jsonrpc': '2.0',
+      'params': {
+        'driver_id': driverId,
+        'customer_id': driverId,
+      },
+      'driver_id': driverId, // For the new backend version
+      'customer_id': driverId, // For the old backend version
     };
 
     final response = await _apiService.getResponse(
@@ -18,6 +24,29 @@ class NotificationRepo {
     );
 
     log("NotificationRepo getNotifications Response: $response");
-    return NotificationResponseModel.fromJson(response as Map<String, dynamic>);
+
+    if (response is Map<String, dynamic>) {
+      if (response.containsKey('error')) {
+        final errorObj = response['error'] as Map<String, dynamic>;
+        final msg = errorObj['message'] ?? 'Odoo JSON-RPC Error';
+        return NotificationResponseModel(
+          status: 'ERROR',
+          message: msg,
+          notifications: [],
+        );
+      }
+
+      final targetData = response.containsKey('result')
+          ? response['result'] as Map<String, dynamic>
+          : response;
+
+      return NotificationResponseModel.fromJson(targetData);
+    }
+
+    return NotificationResponseModel(
+      status: 'ERROR',
+      message: 'Invalid response format',
+      notifications: [],
+    );
   }
 }

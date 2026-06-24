@@ -15,6 +15,12 @@ class DeliveryVerificationScreen extends StatefulWidget {
   final int barrelsQty;
   final int cansQty;
   final String expectedOtp;
+  final double totalAmount;
+  final String address;
+  final bool otpRequired;
+  final bool otpVerified;
+  final bool podRequired;
+  final bool podUploaded;
 
   const DeliveryVerificationScreen({
     super.key,
@@ -23,6 +29,12 @@ class DeliveryVerificationScreen extends StatefulWidget {
     required this.barrelsQty,
     required this.cansQty,
     required this.expectedOtp,
+    required this.totalAmount,
+    required this.address,
+    this.otpRequired = true,
+    this.otpVerified = false,
+    this.podRequired = true,
+    this.podUploaded = false,
   });
 
   @override
@@ -33,7 +45,7 @@ class _DeliveryVerificationScreenState extends State<DeliveryVerificationScreen>
   final TripController _tripController = Get.find<TripController>();
   
   // Multi-step Wizard state
-  int _currentStep = 1; // 1: Verify, 2: OTP, 3: POD
+  late int _currentStep; // 1: Verify, 2: OTP, 3: POD
 
   // OTP inputs
   final List<TextEditingController> _otpControllers = List.generate(6, (_) => TextEditingController());
@@ -62,10 +74,17 @@ class _DeliveryVerificationScreenState extends State<DeliveryVerificationScreen>
       exportBackgroundColor: Colors.grey.shade50,
     );
 
-    // Dynamic price engine matching Velachery stop (18 Barrels = 45000, 18% GST = 8100, Total = 53100)
-    _baseAmount = (widget.barrelsQty * 2500.0) + (widget.cansQty * 500.0);
-    _gstAmount = _baseAmount * 0.18;
-    _totalAmount = _baseAmount + _gstAmount;
+    // Determine initial step based on OTP requirements
+    if (!widget.otpRequired || widget.otpVerified) {
+      _currentStep = 3;
+    } else {
+      _currentStep = 1;
+    }
+
+    // Dynamic price engine calculating values backwards from the backend total amount (assuming 18% GST)
+    _totalAmount = widget.totalAmount;
+    _baseAmount = _totalAmount / 1.18;
+    _gstAmount = _totalAmount - _baseAmount;
   }
 
   @override
@@ -230,7 +249,7 @@ class _DeliveryVerificationScreenState extends State<DeliveryVerificationScreen>
   }
 
   void _submitDelivery() async {
-    if (_signatureController.isEmpty) {
+    if (widget.podRequired && _signatureController.isEmpty) {
       errorSnackBar(
         "Signature Required",
         "Please collect the customer's signature.",
@@ -238,7 +257,7 @@ class _DeliveryVerificationScreenState extends State<DeliveryVerificationScreen>
       return;
     }
 
-    if (!_isPhotoUploaded) {
+    if (widget.podRequired && !_isPhotoUploaded) {
       errorSnackBar(
         "POD Photo Required",
         "Please take a photo of the delivered goods.",
@@ -250,8 +269,11 @@ class _DeliveryVerificationScreenState extends State<DeliveryVerificationScreen>
       _isLoading = true;
     });
 
-    final sigBytes = await _signatureController.toPngBytes();
-    String sigBase64 = sigBytes != null ? base64Encode(sigBytes) : "";
+    String sigBase64 = "";
+    if (_signatureController.isNotEmpty) {
+      final sigBytes = await _signatureController.toPngBytes();
+      sigBase64 = sigBytes != null ? base64Encode(sigBytes) : "";
+    }
 
     bool success = await _tripController.submitProofOfDelivery(
       widget.stopIndex,
@@ -475,7 +497,7 @@ class _DeliveryVerificationScreenState extends State<DeliveryVerificationScreen>
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      "321, Velachery Main Road, Chennai - 600042",
+                      widget.address,
                       style: TextStyle(fontSize: 12, color: greyTextColor),
                     ),
                   ],

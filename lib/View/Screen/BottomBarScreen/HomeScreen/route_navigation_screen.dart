@@ -517,6 +517,12 @@ class _RouteNavigationScreenState extends State<RouteNavigationScreen> {
                                   barrelsQty: stop.barrelsQty,
                                   cansQty: stop.cansQty,
                                   expectedOtp: stop.otpCode,
+                                  totalAmount: stop.totalAmount,
+                                  address: stop.address,
+                                  otpRequired: stop.otpRequired,
+                                  otpVerified: stop.otpVerified,
+                                  podRequired: stop.podRequired,
+                                  podUploaded: stop.podUploaded,
                                 ));
                           },
                           style: ElevatedButton.styleFrom(

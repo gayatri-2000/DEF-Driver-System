@@ -28,17 +28,10 @@ class AuthController extends GetxController {
       final String email = preferences.getString(SharedPreference.userPassword) ?? ""; // username/email field
 
       currentDriver = Driver(
-        id: uid.isNotEmpty ? uid : "DRV12345",
-        name: name.isNotEmpty ? name : "Rajesh Kumar",
-        email: email.isNotEmpty ? email : "rajesh.kumar@defdelivery.com",
-        phone: "+91 98765 43210",
-        baseLocation: "Chennai Plant",
-        rating: 4.8,
-        totalDeliveries: 2847,
-        onTimeRate: 98.0,
-        thisMonthDeliveries: 156,
-        vehicleReg: "TN 01 AB 1234",
-        vehicleLicense: "TN-1234567890",
+        id: uid,
+        name: name,
+        email: email,
+        phone: email,
       );
     }
     update();
@@ -86,16 +79,9 @@ class AuthController extends GetxController {
         isLoggedIn = true;
         currentDriver = Driver(
           id: loginRes.uid.toString(),
-          name: loginRes.name ?? "Rajesh Kumar",
-          email: loginRes.username ?? "rajesh.kumar@defdelivery.com",
+          name: loginRes.name ?? "",
+          email: loginRes.username ?? "",
           phone: phone,
-          baseLocation: "Chennai Plant",
-          rating: 4.8,
-          totalDeliveries: 2847,
-          onTimeRate: 98.0,
-          thisMonthDeliveries: 156,
-          vehicleReg: "TN 01 AB 1234",
-          vehicleLicense: "TN-1234567890",
         );
 
         update();

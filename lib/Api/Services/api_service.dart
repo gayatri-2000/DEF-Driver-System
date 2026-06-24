@@ -111,7 +111,18 @@ class APIService {
     switch (statusCode) {
       case 200:
       case 201:
-        return jsonDecode(body);
+        final decoded = jsonDecode(body);
+        if (decoded is Map<String, dynamic>) {
+          if (decoded.containsKey('error') && decoded['error'] is Map) {
+            final errorMap = decoded['error'] as Map<String, dynamic>;
+            final message = errorMap['message'] ?? 'Odoo JSON-RPC Error';
+            throw FetchDataException(message.toString());
+          }
+          if (decoded.containsKey('result')) {
+            return decoded['result'];
+          }
+        }
+        return decoded;
       case 204:
         return {
           "status": "SUCCESS",

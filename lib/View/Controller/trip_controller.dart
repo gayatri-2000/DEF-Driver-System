@@ -16,9 +16,11 @@ import '../../Api/ResponseModel/verify_otp_response_model.dart';
 import '../../Api/ResponseModel/upload_pod_response_model.dart';
 import '../../Api/ResponseModel/upload_signature_response_model.dart';
 import '../../Api/ResponseModel/complete_order_response_model.dart';
+import '../../Api/ResponseModel/driver_trips_response_model.dart';
 import '../../Api/Apis/app_exception.dart';
 import '../../View/Utils/app_layout.dart';
 import '../Controller/auth_controller.dart';
+import '../../View/Screen/BottomBarScreen/HomeScreen/route_navigation_screen.dart';
 
 class TripController extends GetxController {
   List<Trip> allTrips = [];
@@ -28,12 +30,21 @@ class TripController extends GetxController {
   List<Trip> completedTripsList = [];
   List<Trip> completedTripsFiltered = [];
 
+  List<Trip> pendingTrips = [];
+  List<Trip> inTransitTrips = [];
+
   Trip? activeTrip;
   HistoryTripDetail? activeHistoryTripDetail;
   bool isLoading = false;
   DashboardStatistics? statistics;
   int activeTripId = -1; // Resolved dynamically from trips list
   bool isOffline = false;
+  int selectedTripTab = 0; // 0: Assigned, 1: Completed
+
+  void changeTripTab(int index) {
+    selectedTripTab = index;
+    update();
+  }
 
   final DashboardRepo _dashboardRepo = DashboardRepo();
   final TripRepo _tripRepo = TripRepo();
@@ -42,6 +53,185 @@ class TripController extends GetxController {
   void onInit() {
     super.onInit();
     loadTrips();
+  }
+
+  Trip _mapDriverTripToTrip(DriverTrip dt, String defaultStatus) {
+    String uiStatus = defaultStatus;
+    if (dt.status != null) {
+      final lowerStatus = dt.status!.toLowerCase();
+      if (lowerStatus == 'delivered' || lowerStatus == 'done' || lowerStatus == 'completed') {
+        uiStatus = "Done";
+      } else if (lowerStatus == 'in_transit') {
+        uiStatus = "In Progress";
+      } else {
+        uiStatus = "Pending";
+      }
+    }
+
+    String displayDate = "Today";
+    if (dt.tripDate != null && dt.tripDate!.isNotEmpty) {
+      try {
+        final parsedDate = DateTime.parse(dt.tripDate!);
+        displayDate = DateFormat("MMMM d, yyyy").format(parsedDate);
+      } catch (_) {
+        displayDate = dt.tripDate!;
+      }
+    }
+
+    final orderCount = dt.orderCount ?? 0;
+    final vehicleName = dt.vehicle?.name ?? "TN 01 AB 1234";
+
+    return Trip(
+      id: dt.tripName?.isNotEmpty == true ? dt.tripName! : "TS-0${dt.tripId}",
+      status: uiStatus,
+      date: displayDate,
+      stopsCount: orderCount,
+      doneCount: uiStatus == "Done" ? orderCount : 0,
+      stops: [],
+      totalAmount: dt.totalAmount ?? 0.0,
+      vehicleReg: vehicleName,
+      totalDistance: "${orderCount * 8} km",
+      eta: uiStatus == "Done" ? "Completed" : (uiStatus == "In Progress" ? "In Progress" : "Not Started"),
+      dbTripId: dt.tripId,
+    );
+  }
+
+  Trip _parseTripDetails(TripDetailResponseModel tripData) {
+    final List<RouteStop> stops = [];
+
+    // Add Chennai Plant as index 0 (the starting point)
+    stops.add(RouteStop(
+      index: 0,
+      name: tripData.trip!.plant?.name?.isNotEmpty == true
+          ? tripData.trip!.plant!.name!
+          : "Chennai Plant",
+      lat: "13.0827° N",
+      lng: "80.2707° E",
+      status: "Delivered",
+      address: "10, Plant Road, Industrial Area, Chennai",
+      phone: "+91 44223 34455",
+      contactPerson: "Warehouse In-charge",
+      barrelsQty: 0,
+      cansQty: 0,
+      timeRange: "08:00 AM - 08:30 AM",
+      otpCode: "000000",
+      totalAmount: 0.0,
+      otpRequired: false,
+      otpVerified: true,
+      podRequired: false,
+      podUploaded: true,
+    ));
+
+    final orders = tripData.trip!.orders ?? [];
+    for (int i = 0; i < orders.length; i++) {
+      final order = orders[i];
+
+      // Map order state to stop status
+      String uiStatus = "Upcoming";
+      if (order.deliveryStatus == "delivered") {
+        uiStatus = "Delivered";
+      } else if (order.deliveryStatus == "in_transit") {
+        uiStatus = "Active";
+      } else if (order.deliveryStatus == "dispatched") {
+        uiStatus = "Upcoming";
+      }
+
+      // Calculate barrels and cans by analyzing line items
+      int barrels = 0;
+      int cans = 0;
+      final items = order.items ?? [];
+      for (var item in items) {
+        final name = (item.productName ?? "").toLowerCase();
+        final qty = (item.quantity ?? 0.0).round();
+        if (name.contains("can")) {
+          cans += qty;
+        } else {
+          barrels += qty;
+        }
+      }
+
+      // Fallback if no quantities found
+      if (barrels == 0 && cans == 0) {
+        if (order.amountTotal != null && order.amountTotal! > 0) {
+          barrels = (order.amountTotal! / 2950.0).round();
+          if (barrels == 0) barrels = 1;
+        } else {
+          barrels = 10;
+        }
+      }
+
+      stops.add(RouteStop(
+        index: order.orderId ?? (i + 1),
+        name: order.customerName?.isNotEmpty == true
+            ? order.customerName!
+            : (order.orderName ?? "Order #${order.orderId}"),
+        lat: order.latitude?.toString() ?? "13.0000° N",
+        lng: order.longitude?.toString() ?? "80.0000° E",
+        status: uiStatus,
+        address: order.deliveryAddress?.isNotEmpty == true
+            ? order.deliveryAddress!
+            : "Chennai",
+        phone: order.customerMobile?.isNotEmpty == true
+            ? order.customerMobile!
+            : "+91 98765 12345",
+        contactPerson: order.customerName ?? "Customer Representative",
+        barrelsQty: barrels,
+        cansQty: cans,
+        timeRange: tripData.trip!.tripDate ?? "Today",
+        otpCode: order.deliveryOtp?.isNotEmpty == true
+            ? order.deliveryOtp!
+            : "123456",
+        totalAmount: order.amountTotal ?? 0.0,
+        signatureBase64: order.podUploaded == true ? "uploaded_sig" : null,
+        podPhotoPath: order.podUploaded == true ? "uploaded_photo" : null,
+        otpRequired: order.otpRequired ?? true,
+        otpVerified: order.otpVerified ?? false,
+        podRequired: order.podRequired ?? true,
+        podUploaded: order.podUploaded ?? false,
+      ));
+    }
+
+    // Build Odoo active trip.
+    String uiTripStatus = "In Progress";
+    if (tripData.trip!.status == "delivered") {
+      uiTripStatus = "Done";
+    } else {
+      uiTripStatus = "In Progress";
+    }
+
+    var parsedTrip = Trip(
+      id: tripData.trip!.tripSheetNumber?.isNotEmpty == true
+          ? tripData.trip!.tripSheetNumber!
+          : "TS-0${tripData.trip!.tripId}",
+      status: uiTripStatus,
+      date: tripData.trip!.tripDate ?? "Today",
+      stopsCount: tripData.trip!.totalOrders ?? (stops.length - 1),
+      doneCount: stops
+          .where((s) => s.status == "Delivered" && s.index != 0)
+          .length,
+      stops: stops,
+      totalAmount: tripData.trip!.totalAmount ?? 0.0,
+      vehicleReg: tripData.trip!.vehicle?.name?.isNotEmpty == true
+          ? tripData.trip!.vehicle!.name!
+          : "TN 01 AB 1234",
+      totalDistance: "${(stops.length - 1) * 8} km",
+      eta: "2h 15m",
+    );
+
+    // Save backend raw state in trip object
+    final String rawState = tripData.trip!.status ?? "draft";
+    return Trip(
+      id: parsedTrip.id,
+      status: parsedTrip.status,
+      date: parsedTrip.date,
+      stopsCount: parsedTrip.stopsCount,
+      doneCount: parsedTrip.doneCount,
+      stops: parsedTrip.stops,
+      totalAmount: parsedTrip.totalAmount,
+      vehicleReg: "${parsedTrip.vehicleReg}|$rawState|${tripData.trip!.tripId}",
+      totalDistance: parsedTrip.totalDistance,
+      eta: parsedTrip.eta,
+    );
   }
 
   Future<void> loadTripDetails(int tripId) async {
@@ -77,22 +267,30 @@ class TripController extends GetxController {
         await preferences.putString('cached_statistics', statsJson);
       }
 
-      // Dynamically resolve activeTripId:
+      // Fetch both in-transit and pending driver trips:
       log("TripController: Checking for in-transit driver trips...");
       final inTransitRes = await _tripRepo.getDriverTrips('in_transit');
-      if (inTransitRes.trips != null && inTransitRes.trips!.isNotEmpty) {
-        activeTripId = inTransitRes.trips!.first.tripId ?? -1;
-        log("TripController: Found in-transit trip ID: $activeTripId");
+      inTransitTrips = (inTransitRes.trips ?? [])
+          .map((dt) => _mapDriverTripToTrip(dt, "In Progress"))
+          .toList();
+
+      log("TripController: Checking for pending driver trips...");
+      final pendingRes = await _tripRepo.getDriverTrips('pending');
+      pendingTrips = (pendingRes.trips ?? [])
+          .map((dt) => _mapDriverTripToTrip(dt, "Pending"))
+          .toList();
+
+      // Save raw responses to cache for offline support
+      await preferences.putString('cached_in_transit_trips_raw', jsonEncode(inTransitRes.toJson()));
+      await preferences.putString('cached_pending_trips_raw', jsonEncode(pendingRes.toJson()));
+
+      // Dynamically resolve activeTripId:
+      if (inTransitTrips.isNotEmpty) {
+        activeTripId = inTransitTrips.first.dbTripId ?? -1;
+      } else if (pendingTrips.isNotEmpty) {
+        activeTripId = pendingTrips.first.dbTripId ?? -1;
       } else {
-        log("TripController: Checking for pending driver trips...");
-        final pendingRes = await _tripRepo.getDriverTrips('pending');
-        if (pendingRes.trips != null && pendingRes.trips!.isNotEmpty) {
-          activeTripId = pendingRes.trips!.first.tripId ?? -1;
-          log("TripController: Found pending trip ID: $activeTripId");
-        } else {
-          activeTripId = -1;
-          log("TripController: No active or pending trips found.");
-        }
+        activeTripId = -1;
       }
 
       await preferences.putInt('cached_active_trip_id', activeTripId);
@@ -107,132 +305,7 @@ class TripController extends GetxController {
           final tripJson = jsonEncode(tripData.toJson());
           await preferences.putString('cached_trip_detail', tripJson);
 
-          final List<RouteStop> stops = [];
-
-          // Add Chennai Plant as index 0 (the starting point)
-          stops.add(RouteStop(
-            index: 0,
-            name: tripData.trip!.plant?.name?.isNotEmpty == true
-                ? tripData.trip!.plant!.name!
-                : "Chennai Plant",
-            lat: "13.0827° N",
-            lng: "80.2707° E",
-            status: "Delivered",
-            address: "10, Plant Road, Industrial Area, Chennai",
-            phone: "+91 44223 34455",
-            contactPerson: "Warehouse In-charge",
-            barrelsQty: 0,
-            cansQty: 0,
-            timeRange: "08:00 AM - 08:30 AM",
-            otpCode: "000000",
-          ));
-
-          final orders = tripData.trip!.orders ?? [];
-          for (int i = 0; i < orders.length; i++) {
-            final order = orders[i];
-
-            // Map order state to stop status
-            String uiStatus = "Upcoming";
-            if (order.deliveryStatus == "delivered") {
-              uiStatus = "Delivered";
-            } else if (order.deliveryStatus == "in_transit") {
-              uiStatus = "Active";
-            } else if (order.deliveryStatus == "dispatched") {
-              uiStatus = "Upcoming";
-            }
-
-            // Calculate barrels and cans by analyzing line items
-            int barrels = 0;
-            int cans = 0;
-            final items = order.items ?? [];
-            for (var item in items) {
-              final name = (item.productName ?? "").toLowerCase();
-              final qty = (item.quantity ?? 0.0).round();
-              if (name.contains("can")) {
-                cans += qty;
-              } else {
-                barrels += qty;
-              }
-            }
-
-            // Fallback if no quantities found
-            if (barrels == 0 && cans == 0) {
-              if (order.amountTotal != null && order.amountTotal! > 0) {
-                barrels = (order.amountTotal! / 2950.0).round();
-                if (barrels == 0) barrels = 1;
-              } else {
-                barrels = 10;
-              }
-            }
-
-            stops.add(RouteStop(
-              index: order.orderId ?? (i + 1),
-              name: order.customerName?.isNotEmpty == true
-                  ? order.customerName!
-                  : (order.orderName ?? "Order #${order.orderId}"),
-              lat: order.latitude?.toString() ?? "13.0000° N",
-              lng: order.longitude?.toString() ?? "80.0000° E",
-              status: uiStatus,
-              address: order.deliveryAddress?.isNotEmpty == true
-                  ? order.deliveryAddress!
-                  : "Chennai",
-              phone: order.customerMobile?.isNotEmpty == true
-                  ? order.customerMobile!
-                  : "+91 98765 12345",
-              contactPerson: order.customerName ?? "Customer Representative",
-              barrelsQty: barrels,
-              cansQty: cans,
-              timeRange: tripData.trip!.tripDate ?? "Today",
-              otpCode: order.deliveryOtp?.isNotEmpty == true
-                  ? order.deliveryOtp!
-                  : "123456",
-              signatureBase64: order.podUploaded == true ? "uploaded_sig" : null,
-              podPhotoPath: order.podUploaded == true ? "uploaded_photo" : null,
-            ));
-          }
-
-          // Build Odoo active trip.
-          String uiTripStatus = "In Progress";
-          if (tripData.trip!.status == "delivered") {
-            uiTripStatus = "Done";
-          } else {
-            uiTripStatus = "In Progress";
-          }
-
-          activeTrip = Trip(
-            id: tripData.trip!.tripSheetNumber?.isNotEmpty == true
-                ? tripData.trip!.tripSheetNumber!
-                : "TS-0${tripData.trip!.tripId}",
-            status: uiTripStatus,
-            date: tripData.trip!.tripDate ?? "Today",
-            stopsCount: tripData.trip!.totalOrders ?? (stops.length - 1),
-            doneCount: stops
-                .where((s) => s.status == "Delivered" && s.index != 0)
-                .length,
-            stops: stops,
-            totalAmount: tripData.trip!.totalAmount ?? 0.0,
-            vehicleReg: tripData.trip!.vehicle?.name?.isNotEmpty == true
-                ? tripData.trip!.vehicle!.name!
-                : "TN 01 AB 1234",
-            totalDistance: "${(stops.length - 1) * 8} km",
-            eta: "2h 15m",
-          );
-
-          // Save backend raw state in trip object
-          final String rawState = tripData.trip!.status ?? "draft";
-          activeTrip = Trip(
-            id: activeTrip!.id,
-            status: activeTrip!.status,
-            date: activeTrip!.date,
-            stopsCount: activeTrip!.stopsCount,
-            doneCount: activeTrip!.doneCount,
-            stops: activeTrip!.stops,
-            totalAmount: activeTrip!.totalAmount,
-            vehicleReg: "${activeTrip!.vehicleReg}|$rawState|$activeTripId",
-            totalDistance: activeTrip!.totalDistance,
-            eta: activeTrip!.eta,
-          );
-
+          activeTrip = _parseTripDetails(tripData);
           allTrips = [activeTrip!];
           filteredTrips = List.from(allTrips);
           isOffline = false;
@@ -286,6 +359,37 @@ class TripController extends GetxController {
     }
   }
 
+  Future<void> selectTripAndGo(int tripId) async {
+    isLoading = true;
+    update();
+
+    try {
+      log("TripController: Fetching Odoo trip details for tripId: $tripId...");
+      final TripDetailResponseModel tripData = await _tripRepo.getTripDetail(tripId);
+
+      if (tripData.trip != null) {
+        // Save selected trip details in cache
+        final tripJson = jsonEncode(tripData.toJson());
+        await preferences.putString('cached_trip_detail', tripJson);
+        await preferences.putInt('cached_active_trip_id', tripId);
+
+        activeTrip = _parseTripDetails(tripData);
+        activeTripId = tripId;
+        
+        update();
+        Get.to(() => const RouteNavigationScreen());
+      } else {
+        throw Exception("Odoo trip object is null");
+      }
+    } catch (e) {
+      log("TripController selectTripAndGo error: $e");
+      errorSnackBar("Error", "Could not load trip details.");
+    } finally {
+      isLoading = false;
+      update();
+    }
+  }
+
   Future<bool> _loadFromOfflineCache() async {
     try {
       await preferences.init();
@@ -293,94 +397,38 @@ class TripController extends GetxController {
       final tripStr = preferences.getString('cached_trip_detail') ?? "";
       activeTripId = preferences.getInt('cached_active_trip_id') ?? -1;
 
+      final inTransitRaw = preferences.getString('cached_in_transit_trips_raw') ?? "";
+      final pendingRaw = preferences.getString('cached_pending_trips_raw') ?? "";
+
       if (statsStr.isNotEmpty) {
         statistics = DashboardStatistics.fromJson(jsonDecode(statsStr));
+      }
+
+      if (inTransitRaw.isNotEmpty) {
+        final Map<String, dynamic> parsed = jsonDecode(inTransitRaw);
+        final res = DriverTripsResponseModel.fromJson(parsed);
+        inTransitTrips = (res.trips ?? [])
+            .map((dt) => _mapDriverTripToTrip(dt, "In Progress"))
+            .toList();
+      } else {
+        inTransitTrips = [];
+      }
+
+      if (pendingRaw.isNotEmpty) {
+        final Map<String, dynamic> parsed = jsonDecode(pendingRaw);
+        final res = DriverTripsResponseModel.fromJson(parsed);
+        pendingTrips = (res.trips ?? [])
+            .map((dt) => _mapDriverTripToTrip(dt, "Pending"))
+            .toList();
+      } else {
+        pendingTrips = [];
       }
 
       if (tripStr.isNotEmpty && activeTripId != -1) {
         final Map<String, dynamic> parsed = jsonDecode(tripStr);
         final tripData = TripDetailResponseModel.fromJson(parsed);
         if (tripData.trip != null) {
-          final List<RouteStop> stops = [];
-
-          // Add Chennai Plant as index 0 (the starting point)
-          stops.add(RouteStop(
-            index: 0,
-            name: tripData.trip!.plant?.name?.isNotEmpty == true
-                ? tripData.trip!.plant!.name!
-                : "Chennai Plant",
-            lat: "13.0827° N",
-            lng: "80.2707° E",
-            status: "Delivered",
-            address: "10, Plant Road, Industrial Area, Chennai",
-            phone: "+91 44223 34455",
-            contactPerson: "Warehouse In-charge",
-            barrelsQty: 0,
-            cansQty: 0,
-            timeRange: "08:00 AM - 08:30 AM",
-            otpCode: "000000",
-          ));
-
-          final orders = tripData.trip!.orders ?? [];
-          for (int i = 0; i < orders.length; i++) {
-            final order = orders[i];
-
-            String uiStatus = "Upcoming";
-            if (order.deliveryStatus == "delivered") {
-              uiStatus = "Delivered";
-            } else if (order.deliveryStatus == "in_transit") {
-              uiStatus = "Active";
-            } else if (order.deliveryStatus == "dispatched") {
-              uiStatus = "Upcoming";
-            }
-
-            int barrels = 0;
-            int cans = 0;
-            final items = order.items ?? [];
-            for (var item in items) {
-              final name = (item.productName ?? "").toLowerCase();
-              final qty = (item.quantity ?? 0.0).round();
-              if (name.contains("can")) {
-                cans += qty;
-              } else {
-                barrels += qty;
-              }
-            }
-
-            if (barrels == 0 && cans == 0) {
-              if (order.amountTotal != null && order.amountTotal! > 0) {
-                barrels = (order.amountTotal! / 2950.0).round();
-                if (barrels == 0) barrels = 1;
-              } else {
-                barrels = 10;
-              }
-            }
-
-            stops.add(RouteStop(
-              index: order.orderId ?? (i + 1),
-              name: order.customerName?.isNotEmpty == true
-                  ? order.customerName!
-                  : (order.orderName ?? "Order #${order.orderId}"),
-              lat: order.latitude?.toString() ?? "13.0000° N",
-              lng: order.longitude?.toString() ?? "80.0000° E",
-              status: uiStatus,
-              address: order.deliveryAddress?.isNotEmpty == true
-                  ? order.deliveryAddress!
-                  : "Chennai",
-              phone: order.customerMobile?.isNotEmpty == true
-                  ? order.customerMobile!
-                  : "+91 98765 12345",
-              contactPerson: order.customerName ?? "Customer Representative",
-              barrelsQty: barrels,
-              cansQty: cans,
-              timeRange: tripData.trip!.tripDate ?? "Today",
-              otpCode: order.deliveryOtp?.isNotEmpty == true
-                  ? order.deliveryOtp!
-                  : "123456",
-              signatureBase64: order.podUploaded == true ? "uploaded_sig" : null,
-              podPhotoPath: order.podUploaded == true ? "uploaded_photo" : null,
-            ));
-          }
+          activeTrip = _parseTripDetails(tripData);
 
           // Apply local completion queue to stops list
           final queueStr = preferences.getString('offline_completion_queue') ?? "";
@@ -389,7 +437,7 @@ class TripController extends GetxController {
             for (var item in queueList) {
               final int qOrderId = item['order_id'];
               try {
-                final match = stops.firstWhere((s) => s.index == qOrderId);
+                final match = activeTrip!.stops.firstWhere((s) => s.index == qOrderId);
                 match.status = "Delivered";
                 match.signatureBase64 = item['signature_base64'];
                 match.podPhotoPath = "offline_queued";
@@ -397,45 +445,10 @@ class TripController extends GetxController {
             }
           }
 
-          String uiTripStatus = "In Progress";
-          if (tripData.trip!.status == "delivered") {
-            uiTripStatus = "Done";
-          } else {
-            uiTripStatus = "In Progress";
-          }
-
-          activeTrip = Trip(
-            id: tripData.trip!.tripSheetNumber?.isNotEmpty == true
-                ? tripData.trip!.tripSheetNumber!
-                : "TS-0${tripData.trip!.tripId}",
-            status: uiTripStatus,
-            date: tripData.trip!.tripDate ?? "Today",
-            stopsCount: tripData.trip!.totalOrders ?? (stops.length - 1),
-            doneCount: stops
-                .where((s) => s.status == "Delivered" && s.index != 0)
-                .length,
-            stops: stops,
-            totalAmount: tripData.trip!.totalAmount ?? 0.0,
-            vehicleReg: tripData.trip!.vehicle?.name?.isNotEmpty == true
-                ? tripData.trip!.vehicle!.name!
-                : "TN 01 AB 1234",
-            totalDistance: "${(stops.length - 1) * 8} km",
-            eta: "2h 15m",
-          );
-
-          final String rawState = tripData.trip!.status ?? "draft";
-          activeTrip = Trip(
-            id: activeTrip!.id,
-            status: activeTrip!.status,
-            date: activeTrip!.date,
-            stopsCount: activeTrip!.stopsCount,
-            doneCount: activeTrip!.doneCount,
-            stops: activeTrip!.stops,
-            totalAmount: activeTrip!.totalAmount,
-            vehicleReg: "${activeTrip!.vehicleReg}|$rawState|$activeTripId",
-            totalDistance: activeTrip!.totalDistance,
-            eta: activeTrip!.eta,
-          );
+          // Recalculate doneCount
+          activeTrip!.doneCount = activeTrip!.stops
+              .where((s) => s.status == "Delivered" && s.index != 0)
+              .length;
 
           allTrips = [activeTrip!];
           filteredTrips = List.from(allTrips);
@@ -458,12 +471,13 @@ class TripController extends GetxController {
         successSnackBar("Success", res.message ?? "Trip started successfully");
         try {
           await loadTrips();
+          await selectTripAndGo(tripId);
         } catch (err) {
-          log("TripController: loadTrips failed after starting trip (resuming): $err");
+          log("TripController: loadTrips/selectTripAndGo failed after starting trip (resuming): $err");
         }
         return true;
       } else {
-        errorSnackBar("Failed", res.message ?? "Failed to start trip");
+        errorSnackBar("Failed to start trip", res.message ?? "Failed to start trip");
         return false;
       }
     } catch (e) {

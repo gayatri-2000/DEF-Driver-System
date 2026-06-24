@@ -2,13 +2,13 @@ import '../Utils/api_parser.dart';
 
 class NotificationResponseModel {
   final String? status;
-  final int? customerId;
+  final int? driverId;
   final List<NotificationItem>? notifications;
   final String? message;
 
   NotificationResponseModel({
     this.status,
-    this.customerId,
+    this.driverId,
     this.notifications,
     this.message,
   });
@@ -16,7 +16,7 @@ class NotificationResponseModel {
   factory NotificationResponseModel.fromJson(Map<String, dynamic> json) {
     return NotificationResponseModel(
       status: ApiParser.parseString(json['status']),
-      customerId: ApiParser.parseInt(json['customer_id']),
+      driverId: ApiParser.parseInt(json['driver_id'] ?? json['customer_id']),
       notifications: json['notifications'] != null
           ? (json['notifications'] as List)
               .map((e) => NotificationItem.fromJson(e as Map<String, dynamic>))
@@ -29,7 +29,8 @@ class NotificationResponseModel {
   Map<String, dynamic> toJson() {
     final Map<String, dynamic> data = <String, dynamic>{};
     data['status'] = status;
-    data['customer_id'] = customerId;
+    data['driver_id'] = driverId;
+    data['customer_id'] = driverId;
     if (notifications != null) {
       data['notifications'] = notifications!.map((v) => v.toJson()).toList();
     }
@@ -45,8 +46,8 @@ class NotificationItem {
   final String? notificationType;
   final bool? isRead;
   final String? date;
-  final int? customerId;
-  final String? customerName;
+  final int? driverId;
+  final String? driverName;
 
   NotificationItem({
     this.notificationId,
@@ -55,8 +56,8 @@ class NotificationItem {
     this.notificationType,
     this.isRead,
     this.date,
-    this.customerId,
-    this.customerName,
+    this.driverId,
+    this.driverName,
   });
 
   factory NotificationItem.fromJson(Map<String, dynamic> json) {
@@ -67,8 +68,8 @@ class NotificationItem {
       notificationType: ApiParser.parseString(json['notification_type']),
       isRead: ApiParser.parseBool(json['is_read']),
       date: ApiParser.parseString(json['date']),
-      customerId: ApiParser.parseInt(json['customer_id']),
-      customerName: ApiParser.parseString(json['customer_name']),
+      driverId: ApiParser.parseInt(json['driver_id'] ?? json['customer_id']),
+      driverName: ApiParser.parseString(json['driver_name'] ?? json['customer_name']),
     );
   }
 
@@ -80,8 +81,10 @@ class NotificationItem {
     data['notification_type'] = notificationType;
     data['is_read'] = isRead;
     data['date'] = date;
-    data['customer_id'] = customerId;
-    data['customer_name'] = customerName;
+    data['driver_id'] = driverId;
+    data['customer_id'] = driverId;
+    data['driver_name'] = driverName;
+    data['customer_name'] = driverName;
     return data;
   }
 }
