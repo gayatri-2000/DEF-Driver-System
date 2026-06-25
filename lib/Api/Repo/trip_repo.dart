@@ -9,6 +9,7 @@ import 'package:def_driver_system/Api/ResponseModel/verify_otp_response_model.da
 import 'package:def_driver_system/Api/ResponseModel/upload_pod_response_model.dart';
 import 'package:def_driver_system/Api/ResponseModel/upload_signature_response_model.dart';
 import 'package:def_driver_system/Api/ResponseModel/complete_order_response_model.dart';
+import 'package:def_driver_system/Api/ResponseModel/delivery_instruction_response_model.dart';
 import 'package:def_driver_system/Api/Services/api_service.dart';
 import 'package:def_driver_system/Api/Services/base_service.dart';
 
@@ -206,5 +207,20 @@ class TripRepo {
 
     log("TripRepo getTripHistoryDetail Response: $response");
     return TripHistoryDetailResponseModel.fromJson(response as Map<String, dynamic>);
+  }
+
+  Future<DeliveryInstructionResponseModel> getDeliveryInstructions(int orderId) async {
+    final Map<String, dynamic> body = {
+      'order_id': orderId,
+    };
+
+    final response = await _apiService.getResponse(
+      url: ApiRouts.orderInstructionsAPI,
+      apiType: APIType.aPost,
+      body: body,
+    );
+
+    log("TripRepo getDeliveryInstructions Response: $response");
+    return DeliveryInstructionResponseModel.fromJson(response as Map<String, dynamic>);
   }
 }

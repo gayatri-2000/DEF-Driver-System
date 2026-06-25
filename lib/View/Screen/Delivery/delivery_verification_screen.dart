@@ -8,6 +8,7 @@ import 'package:def_driver_system/View/Constant/app_color.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:def_driver_system/View/Utils/app_layout.dart';
 import 'package:def_driver_system/View/Screen/bottom_bar.dart';
+import 'package:def_driver_system/Api/ResponseModel/delivery_instruction_response_model.dart';
 
 class DeliveryVerificationScreen extends StatefulWidget {
   final int stopIndex;
@@ -65,6 +66,9 @@ class _DeliveryVerificationScreenState extends State<DeliveryVerificationScreen>
   double _gstAmount = 0.0;
   double _totalAmount = 0.0;
 
+  // Delivery instructions state
+  List<DeliveryInstruction> _instructions = [];
+
   @override
   void initState() {
     super.initState();
@@ -85,6 +89,258 @@ class _DeliveryVerificationScreenState extends State<DeliveryVerificationScreen>
     _totalAmount = widget.totalAmount;
     _baseAmount = _totalAmount / 1.18;
     _gstAmount = _totalAmount - _baseAmount;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadAndShowInstructions();
+    });
+  }
+
+  void _loadAndShowInstructions() async {
+    try {
+      final instructions = await _tripController.fetchDeliveryInstructions(widget.stopIndex);
+      if (mounted) {
+        setState(() {
+          _instructions = instructions;
+        });
+
+        if (_instructions.isNotEmpty) {
+          _showInstructionsBottomSheet();
+        }
+      }
+    } catch (e) {
+      debugPrint("Error fetching delivery instructions: $e");
+    }
+  }
+
+  void _showInstructionsBottomSheet() {
+    Get.bottomSheet(
+      Container(
+        padding: const EdgeInsets.fromLTRB(16, 20, 16, 24),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(24),
+            topRight: Radius.circular(24),
+          ),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 5,
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade300,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.amber.shade100,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(Icons.info_outline_rounded, color: Colors.amber.shade900, size: 24),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        "Delivery Instructions",
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xff0C243E),
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        "Please read the following instructions before proceeding",
+                        style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            Flexible(
+              child: SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                child: Column(
+                  children: _instructions.map((inst) {
+                    final bool isUrgent = inst.instructionType?.toLowerCase() == 'urgent' || 
+                                          inst.instructionType?.toLowerCase() == 'critical';
+                    final Color cardBg = isUrgent ? Colors.red.shade50 : Colors.blue.shade50;
+                    final Color sideBorderColor = isUrgent ? Colors.red.shade400 : Colors.blue.shade400;
+                    final Color iconColor = isUrgent ? Colors.red.shade900 : Colors.blue.shade900;
+                    
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      decoration: BoxDecoration(
+                        color: cardBg,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border(
+                          left: BorderSide(color: sideBorderColor, width: 4),
+                        ),
+                      ),
+                      padding: const EdgeInsets.all(12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: isUrgent ? Colors.red.shade100 : Colors.blue.shade100,
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  (inst.instructionType ?? "STANDARD").toUpperCase(),
+                                  style: TextStyle(
+                                    color: iconColor,
+                                    fontSize: 9,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                              ),
+                              if (inst.createdDate != null && inst.createdDate!.isNotEmpty)
+                                Text(
+                                  inst.createdDate!,
+                                  style: TextStyle(fontSize: 10, color: Colors.grey.shade600),
+                                ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            inst.instruction ?? "",
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xff0C243E),
+                              height: 1.3,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          if (inst.createdBy != null && inst.createdBy!.isNotEmpty)
+                            Row(
+                              children: [
+                                Icon(Icons.person_outline_rounded, size: 12, color: Colors.grey.shade600),
+                                const SizedBox(width: 4),
+                                Text(
+                                  "By: ${inst.createdBy}",
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: Colors.grey.shade600,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: () => Get.back(),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: appColor,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                elevation: 0,
+              ),
+              child: const Text(
+                "I Understood",
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 14,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+      isScrollControlled: true,
+    );
+  }
+
+  Widget _buildInstructionsBanner() {
+    if (_instructions.isEmpty) return const SizedBox.shrink();
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.amber.shade50,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.amber.shade200),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.info_outline_rounded, color: Colors.amber.shade800, size: 22),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  "Order has ${_instructions.length} Delivery Instructions",
+                  style: TextStyle(
+                    color: Colors.amber.shade900,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 13,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  "Please review them before verifying delivery.",
+                  style: TextStyle(
+                    color: Colors.amber.shade800,
+                    fontSize: 11,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          TextButton(
+            onPressed: _showInstructionsBottomSheet,
+            style: TextButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              backgroundColor: Colors.amber.shade100,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            child: Text(
+              "Review",
+              style: TextStyle(
+                color: Colors.amber.shade900,
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -336,6 +592,9 @@ class _DeliveryVerificationScreenState extends State<DeliveryVerificationScreen>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
+                    // Delivery Instructions Banner if any
+                    _buildInstructionsBanner(),
+
                     // 2. Delivery Details Card
                     _buildDetailsCard(),
                     const SizedBox(height: 16),

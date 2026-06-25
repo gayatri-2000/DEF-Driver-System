@@ -20,6 +20,40 @@ class _RouteNavigationScreenState extends State<RouteNavigationScreen> {
   final Set<Marker> _markers = {};
   final Set<Polyline> _polylines = {};
 
+  Future<void> _makeCall(String phoneNumber) async {
+    final cleanPhone = phoneNumber.replaceAll(RegExp(r'\s+'), '');
+    final Uri launchUri = Uri(
+      scheme: 'tel',
+      path: cleanPhone,
+    );
+    try {
+      if (await canLaunchUrl(launchUri)) {
+        await launchUrl(launchUri);
+      } else {
+        await launchUrl(launchUri);
+      }
+    } catch (e) {
+      errorSnackBar("Call Error", "Could not place a call to $phoneNumber");
+    }
+  }
+
+  Future<void> _sendSMS(String phoneNumber) async {
+    final cleanPhone = phoneNumber.replaceAll(RegExp(r'\s+'), '');
+    final Uri launchUri = Uri(
+      scheme: 'sms',
+      path: cleanPhone,
+    );
+    try {
+      if (await canLaunchUrl(launchUri)) {
+        await launchUrl(launchUri);
+      } else {
+        await launchUrl(launchUri);
+      }
+    } catch (e) {
+      errorSnackBar("SMS Error", "Could not send SMS to $phoneNumber");
+    }
+  }
+
   double _parseCoordinate(String coordinate) {
     final clean = coordinate
         .replaceAll('°', '')
@@ -484,15 +518,29 @@ class _RouteNavigationScreenState extends State<RouteNavigationScreen> {
                       ),
                     ),
                   if (isActive && !isPlant) ...[
-                    Row(
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
                       children: [
                         OutlinedButton.icon(
-                          onPressed: () {
-                            successSnackBar(
-                              "Calling Customer",
-                              "Connecting call to ${stop.contactPerson} (${stop.phone})...",
-                            );
-                          },
+                          onPressed: () => _sendSMS(stop.phone),
+                          icon: const Icon(Icons.message_outlined,
+                              size: 16, color: appColor),
+                          label: const Text(
+                            "SMS",
+                            style: TextStyle(color: appColor, fontSize: 13),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            side: const BorderSide(color: appColor),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 8),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                          ),
+                        ),
+                        OutlinedButton.icon(
+                          onPressed: () => _makeCall(stop.phone),
                           icon: const Icon(Icons.phone_outlined,
                               size: 16, color: appColor),
                           label: const Text(
@@ -502,13 +550,12 @@ class _RouteNavigationScreenState extends State<RouteNavigationScreen> {
                           style: OutlinedButton.styleFrom(
                             side: const BorderSide(color: appColor),
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 16, vertical: 8),
+                                horizontal: 12, vertical: 8),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(20),
                             ),
                           ),
                         ),
-                        const SizedBox(width: 12),
                         ElevatedButton(
                           onPressed: () {
                             Get.to(() => DeliveryVerificationScreen(
@@ -528,7 +575,7 @@ class _RouteNavigationScreenState extends State<RouteNavigationScreen> {
                           style: ElevatedButton.styleFrom(
                             backgroundColor: appColor,
                             padding: const EdgeInsets.symmetric(
-                                horizontal: 20, vertical: 8),
+                                horizontal: 16, vertical: 8),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(20),
                             ),

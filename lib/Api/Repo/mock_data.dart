@@ -58,7 +58,7 @@ class RouteStop {
 
 class Trip {
   final String id;
-  String status; // "In Progress" | "Done"
+  String status; // "In Transit" | "Done"
   final String date;
   final int stopsCount; // Count of petrol pumps (excluding plant)
   int doneCount; // Count of completed petrol pumps
@@ -86,4 +86,3 @@ class Trip {
   int get pendingCount => stopsCount - doneCount;
   double get progress => stopsCount == 0 ? 0.0 : doneCount / stopsCount;
 }
-

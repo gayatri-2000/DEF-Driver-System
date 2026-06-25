@@ -7,7 +7,6 @@ import 'package:def_driver_system/Api/Repo/mock_data.dart';
 import 'package:def_driver_system/View/Screen/BottomBarScreen/Notification/notification_screen.dart';
 import 'package:def_driver_system/View/Controller/notification_controller.dart';
 
-
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});
 
@@ -34,7 +33,8 @@ class HomeScreen extends StatelessWidget {
             ),
             GetBuilder<TripController>(
               builder: (controller) {
-                String dateStr = DateFormat("MMMM d, yyyy").format(DateTime.now());
+                String dateStr =
+                    DateFormat("MMMM d, yyyy").format(DateTime.now());
                 final tripDate = controller.activeTrip?.date;
                 if (tripDate != null && tripDate != "Today") {
                   try {
@@ -103,9 +103,6 @@ class HomeScreen extends StatelessWidget {
             ...controller.inTransitTrips,
             ...controller.pendingTrips,
           ];
-          final completedTrips = controller.completedTripsList;
-
-          final showList = controller.selectedTripTab == 0 ? assignedTrips : completedTrips;
 
           return RefreshIndicator(
             onRefresh: () => controller.loadTrips(),
@@ -117,20 +114,22 @@ class HomeScreen extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     if (controller.isOffline) _buildOfflineBanner(),
-                    
+
                     // 1. Grid of 4 metrics cards
                     Row(
                       children: [
                         _buildMetricCard(
                           icon: Icons.inventory_2_outlined,
-                          value: (controller.statistics?.totalOrders ?? 0).toString(),
+                          value: (controller.statistics?.totalOrders ?? 0)
+                              .toString(),
                           label: "Total Orders",
                           color: appColor,
                         ),
                         const SizedBox(width: 12),
                         _buildMetricCard(
                           icon: Icons.check_circle_outline,
-                          value: (controller.statistics?.deliveredOrders ?? 0).toString(),
+                          value: (controller.statistics?.deliveredOrders ?? 0)
+                              .toString(),
                           label: "Delivered",
                           color: greenColor,
                         ),
@@ -141,14 +140,16 @@ class HomeScreen extends StatelessWidget {
                       children: [
                         _buildMetricCard(
                           icon: Icons.local_shipping_outlined,
-                          value: (controller.statistics?.inTransitOrders ?? 0).toString(),
+                          value: (controller.statistics?.inTransitOrders ?? 0)
+                              .toString(),
                           label: "In Transit",
                           color: orangeColor,
                         ),
                         const SizedBox(width: 12),
                         _buildMetricCard(
                           icon: Icons.assignment_turned_in_outlined,
-                          value: (controller.statistics?.dispatchedOrders ?? 0).toString(),
+                          value: (controller.statistics?.dispatchedOrders ?? 0)
+                              .toString(),
                           label: "Dispatched",
                           color: Colors.purple,
                         ),
@@ -156,96 +157,28 @@ class HomeScreen extends StatelessWidget {
                     ),
                     const SizedBox(height: 24),
 
-                    // 2. Custom Tabs Toggle
-                    Container(
-                      padding: const EdgeInsets.all(4),
-                      decoration: BoxDecoration(
-                        color: Colors.grey.shade200,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: GestureDetector(
-                              onTap: () => controller.changeTripTab(0),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(vertical: 12),
-                                decoration: BoxDecoration(
-                                  color: controller.selectedTripTab == 0 ? Colors.white : Colors.transparent,
-                                  borderRadius: BorderRadius.circular(10),
-                                  boxShadow: controller.selectedTripTab == 0
-                                      ? [
-                                          BoxShadow(
-                                            color: Colors.black.withOpacity(0.05),
-                                            blurRadius: 4,
-                                            offset: const Offset(0, 2),
-                                          )
-                                        ]
-                                      : null,
-                                ),
-                                child: Center(
-                                  child: Text(
-                                    "Assigned (${assignedTrips.length})",
-                                    style: TextStyle(
-                                      color: controller.selectedTripTab == 0 ? const Color(0xff0C243E) : Colors.grey.shade600,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 13,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                          Expanded(
-                            child: GestureDetector(
-                              onTap: () {
-                                controller.changeTripTab(1);
-                                controller.fetchHistoryTrips();
-                              },
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(vertical: 12),
-                                decoration: BoxDecoration(
-                                  color: controller.selectedTripTab == 1 ? Colors.white : Colors.transparent,
-                                  borderRadius: BorderRadius.circular(10),
-                                  boxShadow: controller.selectedTripTab == 1
-                                      ? [
-                                          BoxShadow(
-                                            color: Colors.black.withOpacity(0.05),
-                                            blurRadius: 4,
-                                            offset: const Offset(0, 2),
-                                          )
-                                        ]
-                                      : null,
-                                ),
-                                child: Center(
-                                  child: Text(
-                                    "Completed (${completedTrips.length})",
-                                    style: TextStyle(
-                                      color: controller.selectedTripTab == 1 ? const Color(0xff0C243E) : Colors.grey.shade600,
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 13,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
+                    const Text(
+                      "Assigned Trips",
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xff0C243E),
                       ),
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 12),
 
                     // 3. Trips List
-                    if (showList.isEmpty)
+                    if (assignedTrips.isEmpty)
                       Center(
                         child: Padding(
                           padding: const EdgeInsets.symmetric(vertical: 40.0),
                           child: Column(
                             children: [
-                              Icon(Icons.local_shipping_outlined, size: 48, color: Colors.grey.shade300),
+                              Icon(Icons.local_shipping_outlined,
+                                  size: 48, color: Colors.grey.shade300),
                               const SizedBox(height: 12),
                               Text(
-                                controller.selectedTripTab == 0 ? "No Assigned Trips" : "No Completed Trips",
+                                "No Assigned Trips",
                                 style: TextStyle(
                                   color: Colors.grey.shade600,
                                   fontSize: 15,
@@ -254,10 +187,9 @@ class HomeScreen extends StatelessWidget {
                               ),
                               const SizedBox(height: 4),
                               Text(
-                                controller.selectedTripTab == 0
-                                    ? "Any new routes assigned will appear here."
-                                    : "Completed route sheets will display here.",
-                                style: TextStyle(color: Colors.grey.shade400, fontSize: 12),
+                                "Any new routes assigned will appear here.",
+                                style: TextStyle(
+                                    color: Colors.grey.shade400, fontSize: 12),
                               ),
                             ],
                           ),
@@ -267,9 +199,9 @@ class HomeScreen extends StatelessWidget {
                       ListView.builder(
                         shrinkWrap: true,
                         physics: const NeverScrollableScrollPhysics(),
-                        itemCount: showList.length,
+                        itemCount: assignedTrips.length,
                         itemBuilder: (context, index) {
-                          final trip = showList[index];
+                          final trip = assignedTrips[index];
                           return _buildTripCard(context, trip, controller);
                         },
                       ),
@@ -334,9 +266,10 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildTripCard(BuildContext context, Trip trip, TripController controller) {
+  Widget _buildTripCard(
+      BuildContext context, Trip trip, TripController controller) {
     final bool isPending = trip.status == "Pending";
-    final bool isInTransit = trip.status == "In Progress";
+    final bool isInTransit = trip.status == "In Transit";
     final bool isCompleted = trip.status == "Done";
 
     Color badgeBg = Colors.grey.shade100;
@@ -407,7 +340,8 @@ class HomeScreen extends StatelessWidget {
           const SizedBox(height: 6),
           Row(
             children: [
-              Icon(Icons.calendar_today_outlined, size: 16, color: greyTextColor),
+              Icon(Icons.calendar_today_outlined,
+                  size: 16, color: greyTextColor),
               const SizedBox(width: 8),
               Text(
                 trip.date,
@@ -424,7 +358,8 @@ class HomeScreen extends StatelessWidget {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text("Stops", style: TextStyle(fontSize: 11, color: Colors.grey)),
+                  const Text("Stops",
+                      style: TextStyle(fontSize: 11, color: Colors.grey)),
                   const SizedBox(height: 2),
                   Text(
                     "${trip.stopsCount} Stops",
@@ -439,7 +374,8 @@ class HomeScreen extends StatelessWidget {
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  const Text("Total Revenue", style: TextStyle(fontSize: 11, color: Colors.grey)),
+                  const Text("Total Revenue",
+                      style: TextStyle(fontSize: 11, color: Colors.grey)),
                   const SizedBox(height: 2),
                   Text(
                     _formatCurrency(trip.totalAmount),
@@ -495,7 +431,8 @@ class HomeScreen extends StatelessWidget {
               child: const Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.navigation_outlined, color: Colors.white, size: 16),
+                  Icon(Icons.navigation_outlined,
+                      color: Colors.white, size: 16),
                   SizedBox(width: 6),
                   Text(
                     "Resume / View Stops",

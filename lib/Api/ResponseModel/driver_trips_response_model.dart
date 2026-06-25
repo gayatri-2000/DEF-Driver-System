@@ -95,7 +95,8 @@ class DriverTrip {
           ? TripEntityReference.fromJson(json['route'] as Map<String, dynamic>)
           : null,
       vehicle: json['vehicle'] != null
-          ? TripEntityReference.fromJson(json['vehicle'] as Map<String, dynamic>)
+          ? TripEntityReference.fromJson(
+              json['vehicle'] as Map<String, dynamic>)
           : null,
     );
   }

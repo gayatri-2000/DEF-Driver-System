@@ -16,6 +16,7 @@ import '../../Api/ResponseModel/verify_otp_response_model.dart';
 import '../../Api/ResponseModel/upload_pod_response_model.dart';
 import '../../Api/ResponseModel/upload_signature_response_model.dart';
 import '../../Api/ResponseModel/complete_order_response_model.dart';
+import '../../Api/ResponseModel/delivery_instruction_response_model.dart';
 import '../../Api/ResponseModel/driver_trips_response_model.dart';
 import '../../Api/Apis/app_exception.dart';
 import '../../View/Utils/app_layout.dart';
@@ -59,10 +60,12 @@ class TripController extends GetxController {
     String uiStatus = defaultStatus;
     if (dt.status != null) {
       final lowerStatus = dt.status!.toLowerCase();
-      if (lowerStatus == 'delivered' || lowerStatus == 'done' || lowerStatus == 'completed') {
+      if (lowerStatus == 'delivered' ||
+          lowerStatus == 'done' ||
+          lowerStatus == 'completed') {
         uiStatus = "Done";
       } else if (lowerStatus == 'in_transit') {
-        uiStatus = "In Progress";
+        uiStatus = "In Transit";
       } else {
         uiStatus = "Pending";
       }
@@ -91,7 +94,9 @@ class TripController extends GetxController {
       totalAmount: dt.totalAmount ?? 0.0,
       vehicleReg: vehicleName,
       totalDistance: "${orderCount * 8} km",
-      eta: uiStatus == "Done" ? "Completed" : (uiStatus == "In Progress" ? "In Progress" : "Not Started"),
+      eta: uiStatus == "Done"
+          ? "Completed"
+          : (uiStatus == "In Transit" ? "In Transit" : "Not Started"),
       dbTripId: dt.tripId,
     );
   }
@@ -192,11 +197,11 @@ class TripController extends GetxController {
     }
 
     // Build Odoo active trip.
-    String uiTripStatus = "In Progress";
+    String uiTripStatus = "In Transit";
     if (tripData.trip!.status == "delivered") {
       uiTripStatus = "Done";
     } else {
-      uiTripStatus = "In Progress";
+      uiTripStatus = "In Transit";
     }
 
     var parsedTrip = Trip(
@@ -206,9 +211,8 @@ class TripController extends GetxController {
       status: uiTripStatus,
       date: tripData.trip!.tripDate ?? "Today",
       stopsCount: tripData.trip!.totalOrders ?? (stops.length - 1),
-      doneCount: stops
-          .where((s) => s.status == "Delivered" && s.index != 0)
-          .length,
+      doneCount:
+          stops.where((s) => s.status == "Delivered" && s.index != 0).length,
       stops: stops,
       totalAmount: tripData.trip!.totalAmount ?? 0.0,
       vehicleReg: tripData.trip!.vehicle?.name?.isNotEmpty == true
@@ -271,7 +275,7 @@ class TripController extends GetxController {
       log("TripController: Checking for in-transit driver trips...");
       final inTransitRes = await _tripRepo.getDriverTrips('in_transit');
       inTransitTrips = (inTransitRes.trips ?? [])
-          .map((dt) => _mapDriverTripToTrip(dt, "In Progress"))
+          .map((dt) => _mapDriverTripToTrip(dt, "In Transit"))
           .toList();
 
       log("TripController: Checking for pending driver trips...");
@@ -281,8 +285,10 @@ class TripController extends GetxController {
           .toList();
 
       // Save raw responses to cache for offline support
-      await preferences.putString('cached_in_transit_trips_raw', jsonEncode(inTransitRes.toJson()));
-      await preferences.putString('cached_pending_trips_raw', jsonEncode(pendingRes.toJson()));
+      await preferences.putString(
+          'cached_in_transit_trips_raw', jsonEncode(inTransitRes.toJson()));
+      await preferences.putString(
+          'cached_pending_trips_raw', jsonEncode(pendingRes.toJson()));
 
       // Dynamically resolve activeTripId:
       if (inTransitTrips.isNotEmpty) {
@@ -365,7 +371,8 @@ class TripController extends GetxController {
 
     try {
       log("TripController: Fetching Odoo trip details for tripId: $tripId...");
-      final TripDetailResponseModel tripData = await _tripRepo.getTripDetail(tripId);
+      final TripDetailResponseModel tripData =
+          await _tripRepo.getTripDetail(tripId);
 
       if (tripData.trip != null) {
         // Save selected trip details in cache
@@ -375,7 +382,7 @@ class TripController extends GetxController {
 
         activeTrip = _parseTripDetails(tripData);
         activeTripId = tripId;
-        
+
         update();
         Get.to(() => const RouteNavigationScreen());
       } else {
@@ -397,8 +404,10 @@ class TripController extends GetxController {
       final tripStr = preferences.getString('cached_trip_detail') ?? "";
       activeTripId = preferences.getInt('cached_active_trip_id') ?? -1;
 
-      final inTransitRaw = preferences.getString('cached_in_transit_trips_raw') ?? "";
-      final pendingRaw = preferences.getString('cached_pending_trips_raw') ?? "";
+      final inTransitRaw =
+          preferences.getString('cached_in_transit_trips_raw') ?? "";
+      final pendingRaw =
+          preferences.getString('cached_pending_trips_raw') ?? "";
 
       if (statsStr.isNotEmpty) {
         statistics = DashboardStatistics.fromJson(jsonDecode(statsStr));
@@ -408,7 +417,7 @@ class TripController extends GetxController {
         final Map<String, dynamic> parsed = jsonDecode(inTransitRaw);
         final res = DriverTripsResponseModel.fromJson(parsed);
         inTransitTrips = (res.trips ?? [])
-            .map((dt) => _mapDriverTripToTrip(dt, "In Progress"))
+            .map((dt) => _mapDriverTripToTrip(dt, "In Transit"))
             .toList();
       } else {
         inTransitTrips = [];
@@ -431,13 +440,15 @@ class TripController extends GetxController {
           activeTrip = _parseTripDetails(tripData);
 
           // Apply local completion queue to stops list
-          final queueStr = preferences.getString('offline_completion_queue') ?? "";
+          final queueStr =
+              preferences.getString('offline_completion_queue') ?? "";
           if (queueStr.isNotEmpty) {
             final List<dynamic> queueList = jsonDecode(queueStr);
             for (var item in queueList) {
               final int qOrderId = item['order_id'];
               try {
-                final match = activeTrip!.stops.firstWhere((s) => s.index == qOrderId);
+                final match =
+                    activeTrip!.stops.firstWhere((s) => s.index == qOrderId);
                 match.status = "Delivered";
                 match.signatureBase64 = item['signature_base64'];
                 match.podPhotoPath = "offline_queued";
@@ -477,7 +488,8 @@ class TripController extends GetxController {
         }
         return true;
       } else {
-        errorSnackBar("Failed to start trip", res.message ?? "Failed to start trip");
+        errorSnackBar(
+            "Failed to start trip", res.message ?? "Failed to start trip");
         return false;
       }
     } catch (e) {
@@ -553,25 +565,31 @@ class TripController extends GetxController {
     try {
       // 1. Upload POD Image
       log("TripController: Uploading POD photo for order: $stopIndex...");
-      final UploadPodResponseModel podRes = await _tripRepo.uploadPod(stopIndex, photoBase64, podNotes);
+      final UploadPodResponseModel podRes =
+          await _tripRepo.uploadPod(stopIndex, photoBase64, podNotes);
       if (podRes.status != 'SUCCESS') {
-        errorSnackBar("POD Upload Failed", podRes.message ?? "Failed to upload image");
+        errorSnackBar(
+            "POD Upload Failed", podRes.message ?? "Failed to upload image");
         return false;
       }
 
       // 2. Upload Signature
       log("TripController: Uploading signature for order: $stopIndex...");
-      final UploadSignatureResponseModel sigRes = await _tripRepo.uploadSignature(stopIndex, signatureBase64);
+      final UploadSignatureResponseModel sigRes =
+          await _tripRepo.uploadSignature(stopIndex, signatureBase64);
       if (sigRes.status != 'SUCCESS') {
-        errorSnackBar("Signature Upload Failed", sigRes.message ?? "Failed to upload signature");
+        errorSnackBar("Signature Upload Failed",
+            sigRes.message ?? "Failed to upload signature");
         return false;
       }
 
       // 3. Complete Order on backend
       log("TripController: Completing order: $stopIndex on Odoo...");
-      final CompleteOrderResponseModel completeRes = await _tripRepo.completeOrder(stopIndex);
+      final CompleteOrderResponseModel completeRes =
+          await _tripRepo.completeOrder(stopIndex);
       if (completeRes.status != 'SUCCESS') {
-        errorSnackBar("Order Completion Failed", completeRes.message ?? "Failed to complete order on backend");
+        errorSnackBar("Order Completion Failed",
+            completeRes.message ?? "Failed to complete order on backend");
         return false;
       }
 
@@ -683,7 +701,8 @@ class TripController extends GetxController {
           'pod_notes': podNotes,
           'timestamp': DateTime.now().toIso8601String(),
         });
-        await preferences.putString('offline_completion_queue', jsonEncode(queueList));
+        await preferences.putString(
+            'offline_completion_queue', jsonEncode(queueList));
         log("TripController: Order $orderId queued locally.");
       }
     } catch (e) {
@@ -720,21 +739,24 @@ class TripController extends GetxController {
 
         try {
           log("TripController: Syncing order $orderId: uploading POD...");
-          final UploadPodResponseModel podRes = await _tripRepo.uploadPod(orderId, photoBase64, podNotes);
+          final UploadPodResponseModel podRes =
+              await _tripRepo.uploadPod(orderId, photoBase64, podNotes);
           if (podRes.status != 'SUCCESS') {
             log("TripController: POD sync failed for order $orderId: ${podRes.message}");
             break; // Stop syncing remaining to maintain order/prevent loop failures
           }
 
           log("TripController: Syncing order $orderId: uploading signature...");
-          final UploadSignatureResponseModel sigRes = await _tripRepo.uploadSignature(orderId, signatureBase64);
+          final UploadSignatureResponseModel sigRes =
+              await _tripRepo.uploadSignature(orderId, signatureBase64);
           if (sigRes.status != 'SUCCESS') {
             log("TripController: Signature sync failed for order $orderId: ${sigRes.message}");
             break;
           }
 
           log("TripController: Syncing order $orderId: completing order...");
-          final CompleteOrderResponseModel completeRes = await _tripRepo.completeOrder(orderId);
+          final CompleteOrderResponseModel completeRes =
+              await _tripRepo.completeOrder(orderId);
           if (completeRes.status != 'SUCCESS') {
             log("TripController: Completion sync failed for order $orderId: ${completeRes.message}");
             break;
@@ -742,9 +764,11 @@ class TripController extends GetxController {
 
           // Successfully synced, remove from queue
           remainingQueue.removeWhere((q) => q['order_id'] == orderId);
-          await preferences.putString('offline_completion_queue', jsonEncode(remainingQueue));
+          await preferences.putString(
+              'offline_completion_queue', jsonEncode(remainingQueue));
           log("TripController: Order $orderId synced successfully with Odoo.");
-          successSnackBar("Sync Success", "Offline delivery for Order #$orderId has been uploaded to Odoo.");
+          successSnackBar("Sync Success",
+              "Offline delivery for Order #$orderId has been uploaded to Odoo.");
         } catch (err) {
           log("TripController: Network error while syncing order $orderId: $err");
           break; // Stop execution on network error
@@ -780,10 +804,12 @@ class TripController extends GetxController {
         String uiStatus = "Done";
         if (dt.status != null) {
           final lowerStatus = dt.status!.toLowerCase();
-          if (lowerStatus == 'delivered' || lowerStatus == 'done' || lowerStatus == 'completed') {
+          if (lowerStatus == 'delivered' ||
+              lowerStatus == 'done' ||
+              lowerStatus == 'completed') {
             uiStatus = "Done";
           } else {
-            uiStatus = "In Progress";
+            uiStatus = "In Transit";
           }
         }
 
@@ -810,7 +836,7 @@ class TripController extends GetxController {
           totalAmount: dt.totalAmount ?? 0.0,
           vehicleReg: dt.vehicleName ?? "TN 01 AB 1234",
           totalDistance: "${(dt.totalOrders ?? 0) * 8} km",
-          eta: uiStatus == "Done" ? "Completed" : "In Progress",
+          eta: uiStatus == "Done" ? "Completed" : "In Transit",
           dbTripId: dt.tripId,
         ));
       }
@@ -859,9 +885,11 @@ class TripController extends GetxController {
     update();
     try {
       log("TripController: Requesting OTP dispatch for order: $orderId...");
-      final SendDeliveryOtpResponseModel res = await _tripRepo.sendDeliveryOtp(orderId);
+      final SendDeliveryOtpResponseModel res =
+          await _tripRepo.sendDeliveryOtp(orderId);
       if (res.status == "SUCCESS") {
-        successSnackBar("OTP Dispatched", res.message ?? "OTP sent successfully on WhatsApp");
+        successSnackBar(
+            "OTP Sent", res.message ?? "OTP sent successfully on WhatsApp");
         try {
           await loadTrips();
         } catch (err) {
@@ -869,7 +897,8 @@ class TripController extends GetxController {
         }
         return true;
       } else {
-        errorSnackBar("Failed to send OTP", res.message ?? "Something went wrong");
+        errorSnackBar(
+            "Failed to send OTP", res.message ?? "Something went wrong");
         return false;
       }
     } catch (e) {
@@ -894,9 +923,11 @@ class TripController extends GetxController {
     update();
     try {
       log("TripController: Requesting OTP verification for order: $orderId...");
-      final VerifyOtpResponseModel res = await _tripRepo.verifyDeliveryOtp(orderId, otp);
+      final VerifyOtpResponseModel res =
+          await _tripRepo.verifyDeliveryOtp(orderId, otp);
       if (res.status == "SUCCESS") {
-        successSnackBar("OTP Verified", res.message ?? "OTP verified successfully");
+        successSnackBar(
+            "OTP Verified", res.message ?? "OTP verified successfully");
         try {
           await loadTrips();
         } catch (err) {
@@ -904,7 +935,8 @@ class TripController extends GetxController {
         }
         return true;
       } else {
-        errorSnackBar("Verification Failed", res.message ?? "Invalid OTP entered");
+        errorSnackBar(
+            "Verification Failed", res.message ?? "Invalid OTP entered");
         return false;
       }
     } catch (e) {
@@ -931,11 +963,13 @@ class TripController extends GetxController {
 
     try {
       log("TripController: Fetching details for trip ID: $tripId...");
-      final TripHistoryDetailResponseModel res = await _tripRepo.getTripHistoryDetail(tripId);
+      final TripHistoryDetailResponseModel res =
+          await _tripRepo.getTripHistoryDetail(tripId);
       if (res.status == "SUCCESS") {
         activeHistoryTripDetail = res.trip;
       } else {
-        errorSnackBar("Failed to load details", res.message ?? "Something went wrong");
+        errorSnackBar(
+            "Failed to load details", res.message ?? "Something went wrong");
       }
     } catch (e) {
       log("TripController fetchTripHistoryDetail error: $e");
@@ -950,6 +984,21 @@ class TripController extends GetxController {
     } finally {
       isLoading = false;
       update();
+    }
+  }
+
+  Future<List<DeliveryInstruction>> fetchDeliveryInstructions(
+      int orderId) async {
+    try {
+      log("TripController: Fetching instructions for order: $orderId...");
+      final res = await _tripRepo.getDeliveryInstructions(orderId);
+      if (res.status == "SUCCESS") {
+        return res.instructions ?? [];
+      }
+      return [];
+    } catch (e) {
+      log("TripController fetchDeliveryInstructions error: $e");
+      return [];
     }
   }
 }

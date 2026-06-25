@@ -53,7 +53,10 @@ class _HistoryScreenState extends State<HistoryScreen> {
           children: [
             Text(
               "Delivery History",
-              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
+              style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18),
             ),
             Text(
               "Past deliveries and trips",
@@ -91,7 +94,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
                     },
                     decoration: InputDecoration(
                       hintText: "Search by trip ID or date...",
-                      hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
+                      hintStyle:
+                          TextStyle(color: Colors.grey.shade400, fontSize: 14),
                       prefixIcon: const Icon(Icons.search, color: Colors.grey),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
@@ -102,7 +106,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   ),
                 ),
                 const SizedBox(height: 16),
-  
+
                 // Monthly Performance Card
                 Container(
                   padding: const EdgeInsets.all(20),
@@ -141,7 +145,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                   ),
                 ),
                 const SizedBox(height: 24),
-  
+
                 // Grouped History List
                 GetBuilder<TripController>(
                   builder: (controller) {
@@ -160,18 +164,21 @@ class _HistoryScreenState extends State<HistoryScreen> {
                           padding: const EdgeInsets.symmetric(vertical: 40.0),
                           child: Column(
                             children: [
-                              Icon(Icons.search_off_outlined, size: 48, color: greyTextColor),
+                              Icon(Icons.search_off_outlined,
+                                  size: 48, color: greyTextColor),
                               const SizedBox(height: 12),
                               Text(
                                 "No matching trips found",
-                                style: TextStyle(color: greyTextColor, fontWeight: FontWeight.w600),
+                                style: TextStyle(
+                                    color: greyTextColor,
+                                    fontWeight: FontWeight.w600),
                               ),
                             ],
                           ),
                         ),
                       );
                     }
-  
+
                     // Group by Date in UI (since it's mock, we map by date groups)
                     // Grouping trips by date
                     Map<String, List<Trip>> groupedTrips = {};
@@ -181,7 +188,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                       }
                       groupedTrips[trip.date]!.add(trip);
                     }
-  
+
                     List<Widget> groupedViews = [];
                     groupedTrips.forEach((date, tripList) {
                       groupedViews.add(
@@ -189,7 +196,8 @@ class _HistoryScreenState extends State<HistoryScreen> {
                           padding: const EdgeInsets.only(bottom: 12.0),
                           child: Row(
                             children: [
-                              const Icon(Icons.calendar_today_outlined, size: 14, color: Colors.grey),
+                              const Icon(Icons.calendar_today_outlined,
+                                  size: 14, color: Colors.grey),
                               const SizedBox(width: 6),
                               Text(
                                 date,
@@ -203,7 +211,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                           ),
                         ),
                       );
-  
+
                       for (var trip in tripList) {
                         groupedViews.add(
                           Padding(
@@ -213,7 +221,7 @@ class _HistoryScreenState extends State<HistoryScreen> {
                         );
                       }
                     });
-  
+
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: groupedViews,
@@ -253,9 +261,10 @@ class _HistoryScreenState extends State<HistoryScreen> {
   }
 
   Widget _buildTripCard(Trip trip) {
-    bool isInProgress = trip.status == "In Progress";
+    bool isInProgress = trip.status == "In Transit";
     Color progressColor = isInProgress ? appColor : greenColor;
-    Color statusBg = isInProgress ? appColor.withOpacity(0.1) : const Color(0xffE6F4EA);
+    Color statusBg =
+        isInProgress ? appColor.withOpacity(0.1) : const Color(0xffE6F4EA);
     Color statusText = isInProgress ? appColor : greenColor;
 
     return GestureDetector(
@@ -287,114 +296,117 @@ class _HistoryScreenState extends State<HistoryScreen> {
           ],
         ),
         padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Row 1: Trip Name, Status Badge, Val Price
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                "Trip ${trip.id}",
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xff0C243E),
-                ),
-              ),
-              const Spacer(),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: statusBg,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  trip.status,
-                  style: TextStyle(
-                    color: statusText,
-                    fontSize: 11,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Row 1: Trip Name, Status Badge, Val Price
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  "Trip ${trip.id}",
+                  style: const TextStyle(
+                    fontSize: 16,
                     fontWeight: FontWeight.bold,
+                    color: Color(0xff0C243E),
                   ),
                 ),
-              ),
-              const SizedBox(width: 12),
-              Text(
-                _formatCurrency(trip.totalAmount),
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xff0C243E),
+                const Spacer(),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: statusBg,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    trip.status,
+                    style: TextStyle(
+                      color: statusText,
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-
-          // Row 2: Ratio of Deliveries done
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                "${trip.doneCount}/${trip.stopsCount} deliveries",
-                style: TextStyle(
-                  fontSize: 12,
-                  color: greyTextColor,
-                  fontWeight: FontWeight.w500,
+                const SizedBox(width: 12),
+                Text(
+                  _formatCurrency(trip.totalAmount),
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xff0C243E),
+                  ),
                 ),
-              ),
-              Text(
-                "Total",
-                style: TextStyle(
-                  fontSize: 11,
-                  color: greyTextColor,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-
-          // Row 3: Progress Bar
-          ClipRRect(
-            borderRadius: BorderRadius.circular(4),
-            child: LinearProgressIndicator(
-              value: trip.progress,
-              backgroundColor: Colors.grey.shade200,
-              valueColor: AlwaysStoppedAnimation<Color>(progressColor),
-              minHeight: 6,
+              ],
             ),
-          ),
-          const SizedBox(height: 12),
+            const SizedBox(height: 8),
 
-          // Row 4: Timeline Counters
-          Row(
-            children: [
-              Icon(Icons.inventory_2_outlined, size: 14, color: greyTextColor),
-              const SizedBox(width: 4),
-              Text(
-                "${trip.stopsCount} stops",
-                style: TextStyle(
-                  fontSize: 12,
-                  color: greyTextColor,
-                  fontWeight: FontWeight.w500,
+            // Row 2: Ratio of Deliveries done
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  "${trip.doneCount}/${trip.stopsCount} deliveries",
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: greyTextColor,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
-              ),
-              const SizedBox(width: 16),
-              Icon(Icons.check_circle_outline, size: 14, color: greyTextColor),
-              const SizedBox(width: 4),
-              Text(
-                "${trip.doneCount} done",
-                style: TextStyle(
-                  fontSize: 12,
-                  color: greyTextColor,
-                  fontWeight: FontWeight.w500,
+                Text(
+                  "Total",
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: greyTextColor,
+                  ),
                 ),
+              ],
+            ),
+            const SizedBox(height: 8),
+
+            // Row 3: Progress Bar
+            ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: LinearProgressIndicator(
+                value: trip.progress,
+                backgroundColor: Colors.grey.shade200,
+                valueColor: AlwaysStoppedAnimation<Color>(progressColor),
+                minHeight: 6,
               ),
-            ],
-          ),
-        ],
+            ),
+            const SizedBox(height: 12),
+
+            // Row 4: Timeline Counters
+            Row(
+              children: [
+                Icon(Icons.inventory_2_outlined,
+                    size: 14, color: greyTextColor),
+                const SizedBox(width: 4),
+                Text(
+                  "${trip.stopsCount} stops",
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: greyTextColor,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Icon(Icons.check_circle_outline,
+                    size: 14, color: greyTextColor),
+                const SizedBox(width: 4),
+                Text(
+                  "${trip.doneCount} done",
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: greyTextColor,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
-    ),
-  );
+    );
   }
 }

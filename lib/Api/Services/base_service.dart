@@ -23,4 +23,5 @@ class ApiRouts {
   static String tripHistoryDetailAPI =
       '$baseUrl/api/driver/trip_history_detail';
   static String notificationAPI = '$baseUrl/api/notification';
+  static String orderInstructionsAPI = '$baseUrl/api/order/instructions';
 }
