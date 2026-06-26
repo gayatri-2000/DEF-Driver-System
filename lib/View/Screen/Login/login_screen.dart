@@ -115,14 +115,15 @@ class _LoginScreenState extends State<LoginScreen> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                   // Phone Number Input
+                  // Phone Number Input
                   TextFormField(
                     controller: _phoneController,
                     keyboardType: TextInputType.text,
                     decoration: InputDecoration(
                       labelText: "Username / Driver ID",
                       hintText: "Enter your username or ID",
-                      prefixIcon: const Icon(Icons.person_outline, color: appColor),
+                      prefixIcon:
+                          const Icon(Icons.person_outline, color: appColor),
                       filled: true,
                       fillColor: textFieldColor,
                       border: OutlineInputBorder(
@@ -131,7 +132,8 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: appColor, width: 1.5),
+                        borderSide:
+                            const BorderSide(color: appColor, width: 1.5),
                       ),
                     ),
                     validator: (val) {
@@ -150,10 +152,13 @@ class _LoginScreenState extends State<LoginScreen> {
                     decoration: InputDecoration(
                       labelText: "Password / Secure PIN",
                       hintText: "Enter your password or PIN",
-                      prefixIcon: const Icon(Icons.lock_outline, color: appColor),
+                      prefixIcon:
+                          const Icon(Icons.lock_outline, color: appColor),
                       suffixIcon: IconButton(
                         icon: Icon(
-                          _obscurePin ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                          _obscurePin
+                              ? Icons.visibility_off_outlined
+                              : Icons.visibility_outlined,
                           color: greyTextColor,
                         ),
                         onPressed: () {
@@ -170,7 +175,8 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
-                        borderSide: const BorderSide(color: appColor, width: 1.5),
+                        borderSide:
+                            const BorderSide(color: appColor, width: 1.5),
                       ),
                     ),
                     validator: (val) {

@@ -16,6 +16,7 @@ import '../../Api/ResponseModel/verify_otp_response_model.dart';
 import '../../Api/ResponseModel/upload_pod_response_model.dart';
 import '../../Api/ResponseModel/upload_signature_response_model.dart';
 import '../../Api/ResponseModel/complete_order_response_model.dart';
+import '../../Api/ResponseModel/complete_trip_response_model.dart';
 import '../../Api/ResponseModel/delivery_instruction_response_model.dart';
 import '../../Api/ResponseModel/driver_trips_response_model.dart';
 import '../../Api/Apis/app_exception.dart';
@@ -193,6 +194,7 @@ class TripController extends GetxController {
         otpVerified: order.otpVerified ?? false,
         podRequired: order.podRequired ?? true,
         podUploaded: order.podUploaded ?? false,
+        paymentMethod: order.paymentMethod,
       ));
     }
 
@@ -235,6 +237,7 @@ class TripController extends GetxController {
       vehicleReg: "${parsedTrip.vehicleReg}|$rawState|${tripData.trip!.tripId}",
       totalDistance: parsedTrip.totalDistance,
       eta: parsedTrip.eta,
+      dbTripId: tripData.trip!.tripId,
     );
   }
 
@@ -445,6 +448,12 @@ class TripController extends GetxController {
           if (queueStr.isNotEmpty) {
             final List<dynamic> queueList = jsonDecode(queueStr);
             for (var item in queueList) {
+              if (item['is_trip_completion'] == true) {
+                if (item['trip_id'] == activeTripId && activeTrip != null) {
+                  activeTrip!.status = "Done";
+                }
+                continue;
+              }
               final int qOrderId = item['order_id'];
               try {
                 final match =
@@ -732,6 +741,43 @@ class TripController extends GetxController {
       final List<dynamic> remainingQueue = List.from(queueList);
 
       for (var item in queueList) {
+        if (item['is_trip_completion'] == true) {
+          final int tripId = item['trip_id'];
+          try {
+            log("TripController: Syncing complete trip for tripId $tripId...");
+            final CompleteTripResponseModel res =
+                await _tripRepo.completeTrip(tripId);
+            if (res.status != 'SUCCESS') {
+              log("TripController: Trip completion sync failed: ${res.message}");
+              remainingQueue.removeWhere((q) =>
+                  q['is_trip_completion'] == true && q['trip_id'] == tripId);
+              await preferences.putString(
+                  'offline_completion_queue', jsonEncode(remainingQueue));
+              continue;
+            }
+
+            // Successfully synced, remove from queue
+            remainingQueue.removeWhere((q) =>
+                q['is_trip_completion'] == true && q['trip_id'] == tripId);
+            await preferences.putString(
+                'offline_completion_queue', jsonEncode(remainingQueue));
+            log("TripController: Trip $tripId completed sync successfully.");
+            successSnackBar("Sync Success",
+                "Trip #$tripId has been marked completed on Odoo.");
+          } catch (err) {
+            log("TripController: Error while syncing trip completion for tripId $tripId: $err");
+            if (err is BadRequestException || err is UnauthorisedException) {
+              remainingQueue.removeWhere((q) =>
+                  q['is_trip_completion'] == true && q['trip_id'] == tripId);
+              await preferences.putString(
+                  'offline_completion_queue', jsonEncode(remainingQueue));
+              continue;
+            }
+            break;
+          }
+          continue;
+        }
+
         final int orderId = item['order_id'];
         final String signatureBase64 = item['signature_base64'];
         final String photoBase64 = item['photo_base64'];
@@ -743,7 +789,10 @@ class TripController extends GetxController {
               await _tripRepo.uploadPod(orderId, photoBase64, podNotes);
           if (podRes.status != 'SUCCESS') {
             log("TripController: POD sync failed for order $orderId: ${podRes.message}");
-            break; // Stop syncing remaining to maintain order/prevent loop failures
+            remainingQueue.removeWhere((q) => q['order_id'] == orderId);
+            await preferences.putString(
+                'offline_completion_queue', jsonEncode(remainingQueue));
+            continue;
           }
 
           log("TripController: Syncing order $orderId: uploading signature...");
@@ -751,7 +800,10 @@ class TripController extends GetxController {
               await _tripRepo.uploadSignature(orderId, signatureBase64);
           if (sigRes.status != 'SUCCESS') {
             log("TripController: Signature sync failed for order $orderId: ${sigRes.message}");
-            break;
+            remainingQueue.removeWhere((q) => q['order_id'] == orderId);
+            await preferences.putString(
+                'offline_completion_queue', jsonEncode(remainingQueue));
+            continue;
           }
 
           log("TripController: Syncing order $orderId: completing order...");
@@ -759,7 +811,10 @@ class TripController extends GetxController {
               await _tripRepo.completeOrder(orderId);
           if (completeRes.status != 'SUCCESS') {
             log("TripController: Completion sync failed for order $orderId: ${completeRes.message}");
-            break;
+            remainingQueue.removeWhere((q) => q['order_id'] == orderId);
+            await preferences.putString(
+                'offline_completion_queue', jsonEncode(remainingQueue));
+            continue;
           }
 
           // Successfully synced, remove from queue
@@ -770,9 +825,21 @@ class TripController extends GetxController {
           successSnackBar("Sync Success",
               "Offline delivery for Order #$orderId has been uploaded to Odoo.");
         } catch (err) {
-          log("TripController: Network error while syncing order $orderId: $err");
+          log("TripController: Error while syncing order $orderId: $err");
+          if (err is BadRequestException || err is UnauthorisedException) {
+            remainingQueue.removeWhere((q) => q['order_id'] == orderId);
+            await preferences.putString(
+                'offline_completion_queue', jsonEncode(remainingQueue));
+            continue;
+          }
           break; // Stop execution on network error
         }
+      }
+
+      if (remainingQueue.isEmpty) {
+        try {
+          await loadTrips();
+        } catch (_) {}
       }
     } catch (e) {
       log("TripController syncOfflineQueue error: $e");
@@ -999,6 +1066,107 @@ class TripController extends GetxController {
     } catch (e) {
       log("TripController fetchDeliveryInstructions error: $e");
       return [];
+    }
+  }
+
+  Future<bool> completeTrip(int tripId) async {
+    // If offline, queue locally and update UI state
+    if (isOffline) {
+      log("TripController: Offline mode active. Queueing complete trip for tripId $tripId locally.");
+      await _queueOfflineTripCompletion(tripId);
+      if (activeTrip != null && activeTrip!.dbTripId == tripId) {
+        activeTrip!.status = "Done";
+      }
+      successSnackBar(
+        "Saved Offline",
+        "Trip completion recorded locally. Will sync when online.",
+      );
+      update();
+      return true;
+    }
+
+    isLoading = true;
+    update();
+    try {
+      log("TripController: Completing trip with ID: $tripId...");
+      final CompleteTripResponseModel res =
+          await _tripRepo.completeTrip(tripId);
+      if (res.status == "SUCCESS") {
+        successSnackBar("Success", res.message ?? "Trip completed successfully");
+        try {
+          await loadTrips();
+        } catch (err) {
+          log("TripController: loadTrips failed after completing trip (resuming): $err");
+        }
+        return true;
+      } else {
+        errorSnackBar(
+            "Failed to complete trip", res.message ?? "Failed to complete trip");
+        return false;
+      }
+    } catch (e) {
+      log("TripController completeTrip error: $e");
+
+      // Handle bad request / logic validation errors without queueing offline
+      if (e is BadRequestException || e is UnauthorisedException) {
+        String errMsg = "Failed to complete trip";
+        try {
+          final rawMsg = e.toString().replaceFirst(RegExp(r'^[^:]+:'), '').trim();
+          final parsed = jsonDecode(rawMsg);
+          if (parsed is Map && parsed.containsKey('message')) {
+            errMsg = parsed['message'].toString();
+          } else {
+            errMsg = rawMsg;
+          }
+        } catch (_) {
+          errMsg = e.toString().replaceAll('BadRequestException:', '').replaceAll('Invalid Request:', '').trim();
+        }
+        errorSnackBar("Failed to complete trip", errMsg);
+        return false;
+      }
+
+      // Fallback to offline queue only for connection/server errors
+      log("TripController completeTrip error: $e. Falling back to offline queue.");
+      await _queueOfflineTripCompletion(tripId);
+      if (activeTrip != null && activeTrip!.dbTripId == tripId) {
+        activeTrip!.status = "Done";
+      }
+      isOffline = true;
+      successSnackBar(
+        "Saved Offline",
+        "Server error encountered. Trip completion queued locally.",
+      );
+      return true;
+    } finally {
+      isLoading = false;
+      update();
+    }
+  }
+
+  Future<void> _queueOfflineTripCompletion(int tripId) async {
+    try {
+      await preferences.init();
+      final queueStr = preferences.getString('offline_completion_queue') ?? "";
+      List<dynamic> queueList = [];
+      if (queueStr.isNotEmpty) {
+        queueList = jsonDecode(queueStr);
+      }
+
+      // Check if this trip completion is already queued
+      bool alreadyQueued = queueList.any((item) =>
+          item['is_trip_completion'] == true && item['trip_id'] == tripId);
+      if (!alreadyQueued) {
+        queueList.add({
+          'is_trip_completion': true,
+          'trip_id': tripId,
+          'timestamp': DateTime.now().toIso8601String(),
+        });
+        await preferences.putString(
+            'offline_completion_queue', jsonEncode(queueList));
+        log("TripController: Complete trip for tripId $tripId queued locally.");
+      }
+    } catch (e) {
+      log("TripController _queueOfflineTripCompletion error: $e");
     }
   }
 }

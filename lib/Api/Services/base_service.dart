@@ -19,6 +19,7 @@ class ApiRouts {
   static String uploadPodAPI = '$baseUrl/api/driver/upload_pod';
   static String uploadSignatureAPI = '$baseUrl/api/driver/upload_signature';
   static String completeOrderAPI = '$baseUrl/api/driver/complete_order';
+  static String completeTripAPI = '$baseUrl/api/driver/complete_trip';
   static String tripHistoryAPI = '$baseUrl/api/driver/trip_history';
   static String tripHistoryDetailAPI =
       '$baseUrl/api/driver/trip_history_detail';

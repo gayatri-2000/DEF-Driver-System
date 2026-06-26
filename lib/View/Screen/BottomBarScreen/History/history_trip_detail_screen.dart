@@ -44,6 +44,16 @@ class _HistoryTripDetailScreenState extends State<HistoryTripDetailScreen> {
     }
   }
 
+  String _formatDateAndTime(String? dateTimeStr) {
+    if (dateTimeStr == null || dateTimeStr.isEmpty) return "N/A";
+    try {
+      final parsed = DateTime.parse(dateTimeStr);
+      return DateFormat("MMMM d, yyyy hh:mm a").format(parsed);
+    } catch (_) {
+      return dateTimeStr;
+    }
+  }
+
   String _formatDate(String? dateStr) {
     if (dateStr == null || dateStr.isEmpty) return "Today";
     try {
@@ -158,11 +168,9 @@ class _HistoryTripDetailScreenState extends State<HistoryTripDetailScreen> {
                         const SizedBox(height: 8),
                         _buildMetaRow(Icons.route_outlined, "Route", detail.routeName ?? "N/A"),
                         const SizedBox(height: 8),
-                        _buildMetaRow(
-                          Icons.access_time_rounded,
-                          "Duration",
-                          "${_formatDateTime(detail.startTime)} - ${_formatDateTime(detail.endTime)}",
-                        ),
+                        _buildMetaRow(Icons.play_circle_outline, "Trip Started", _formatDateAndTime(detail.startTime)),
+                        const SizedBox(height: 8),
+                        _buildMetaRow(Icons.check_circle_outline, "Trip Ended", _formatDateAndTime(detail.endTime)),
                       ],
                     ),
                   ),

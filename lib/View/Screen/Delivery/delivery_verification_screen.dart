@@ -8,6 +8,7 @@ import 'package:def_driver_system/View/Constant/app_color.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:def_driver_system/View/Utils/app_layout.dart';
 import 'package:def_driver_system/View/Screen/bottom_bar.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:def_driver_system/Api/ResponseModel/delivery_instruction_response_model.dart';
 
 class DeliveryVerificationScreen extends StatefulWidget {
@@ -22,6 +23,9 @@ class DeliveryVerificationScreen extends StatefulWidget {
   final bool otpVerified;
   final bool podRequired;
   final bool podUploaded;
+  final String? paymentMethod;
+  final String phone;
+  final String contactPerson;
 
   const DeliveryVerificationScreen({
     super.key,
@@ -36,6 +40,9 @@ class DeliveryVerificationScreen extends StatefulWidget {
     this.otpVerified = false,
     this.podRequired = true,
     this.podUploaded = false,
+    this.paymentMethod,
+    required this.phone,
+    required this.contactPerson,
   });
 
   @override
@@ -361,6 +368,23 @@ class _DeliveryVerificationScreenState extends State<DeliveryVerificationScreen>
       symbol: '₹',
       decimalDigits: 0,
     ).format(amount);
+  }
+
+  Future<void> _makeCall(String phoneNumber) async {
+    final cleanPhone = phoneNumber.replaceAll(RegExp(r'\s+'), '');
+    final Uri launchUri = Uri(
+      scheme: 'tel',
+      path: cleanPhone,
+    );
+    try {
+      if (await canLaunchUrl(launchUri)) {
+        await launchUrl(launchUri);
+      } else {
+        await launchUrl(launchUri);
+      }
+    } catch (e) {
+      errorSnackBar("Call Error", "Could not place a call to $phoneNumber");
+    }
   }
 
   void _sendOtpAction() async {
@@ -720,6 +744,7 @@ class _DeliveryVerificationScreenState extends State<DeliveryVerificationScreen>
   }
 
   Widget _buildDetailsCard() {
+    final bool isPostpaid = widget.paymentMethod?.toLowerCase() == 'cod';
     String qtyString = "";
     if (widget.barrelsQty > 0 && widget.cansQty > 0) {
       qtyString = "${widget.barrelsQty} Barrels + ${widget.cansQty} Cans";
@@ -775,6 +800,85 @@ class _DeliveryVerificationScreenState extends State<DeliveryVerificationScreen>
                 style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xff0C243E)),
               ),
             ],
+          ),
+          const SizedBox(height: 12),
+          // Customer Contact Info & Call Option
+          Row(
+            children: [
+              Icon(Icons.person_outline_rounded, color: greyTextColor, size: 18),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      widget.contactPerson,
+                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xff0C243E)),
+                    ),
+                    if (widget.phone.isNotEmpty)
+                      Text(
+                        widget.phone,
+                        style: TextStyle(fontSize: 11, color: greyTextColor),
+                      ),
+                  ],
+                ),
+              ),
+              if (widget.phone.isNotEmpty)
+                IconButton(
+                  onPressed: () => _makeCall(widget.phone),
+                  icon: const Icon(Icons.phone_in_talk_rounded, color: appColor, size: 20),
+                  style: IconButton.styleFrom(
+                    backgroundColor: appColor.withOpacity(0.08),
+                    padding: const EdgeInsets.all(8),
+                    minimumSize: const Size(36, 36),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          // Large Catchy Highlighted Payment Mode Container
+          Container(
+            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+            decoration: BoxDecoration(
+              color: isPostpaid ? Colors.orange.shade50 : const Color(0xffE6F4EA),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: (isPostpaid ? orangeColor : greenColor).withOpacity(0.3),
+                width: 1.5,
+              ),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                      Icons.payment_outlined,
+                      color: isPostpaid ? orangeColor : greenColor,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      "Payment Mode",
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: isPostpaid ? orangeColor.withOpacity(0.8) : greenColor.withOpacity(0.8),
+                      ),
+                    ),
+                  ],
+                ),
+                Text(
+                  isPostpaid ? "POSTPAID (COD)" : "PREPAID",
+                  style: TextStyle(
+                    color: isPostpaid ? orangeColor : greenColor,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+              ],
+            ),
           ),
           const SizedBox(height: 16),
           const Divider(height: 1),

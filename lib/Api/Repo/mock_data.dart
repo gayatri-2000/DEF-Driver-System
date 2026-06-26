@@ -32,6 +32,7 @@ class RouteStop {
   final bool otpVerified;
   final bool podRequired;
   final bool podUploaded;
+  final String? paymentMethod;
 
   RouteStop({
     required this.index,
@@ -53,6 +54,7 @@ class RouteStop {
     this.otpVerified = false,
     this.podRequired = true,
     this.podUploaded = false,
+    this.paymentMethod,
   });
 }
 

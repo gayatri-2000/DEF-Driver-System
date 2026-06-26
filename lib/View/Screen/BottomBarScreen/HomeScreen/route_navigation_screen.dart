@@ -320,30 +320,113 @@ class _RouteNavigationScreenState extends State<RouteNavigationScreen> {
                 ),
                 const SizedBox(height: 56),
 
-                // 2. Open in Google Maps Button
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                  child: ElevatedButton.icon(
-                    onPressed: () => _openGoogleMaps(trip),
-                    icon: const Icon(Icons.navigation_outlined,
-                        color: Colors.white, size: 20),
-                    label: const Text(
-                      "Open in Google Maps",
-                      style: TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white),
+                // 2. Open in Google Maps Button / Complete Trip
+                if (trip.status == "In Transit" && trip.pendingCount == 0) ...[
+                  Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 16.0),
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: const Color(0xffE6F4EA),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: greenColor.withOpacity(0.3)),
                     ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: appColor,
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      elevation: 0,
+                    child: Row(
+                      children: [
+                        Icon(Icons.check_circle_outline_rounded,
+                            color: greenColor, size: 28),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                "All Orders Completed!",
+                                style: TextStyle(
+                                  color: greenColor,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 15,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                "You have completed all deliveries on this route. Please mark the trip as completed below.",
+                                style: TextStyle(
+                                  color: greenColor.withOpacity(0.8),
+                                  fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                ),
+                  const SizedBox(height: 16),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                    child: ElevatedButton.icon(
+                      onPressed: controller.isLoading
+                          ? null
+                          : () async {
+                              final success = await controller
+                                  .completeTrip(trip.dbTripId ?? 1);
+                              if (success) {
+                                Get.back();
+                              }
+                            },
+                      icon: controller.isLoading
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2,
+                              ),
+                            )
+                          : const Icon(Icons.check_circle_rounded,
+                              color: Colors.white, size: 20),
+                      label: const Text(
+                        "Complete Trip",
+                        style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: greenColor,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        elevation: 0,
+                      ),
+                    ),
+                  ),
+                ] else ...[
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                    child: ElevatedButton.icon(
+                      onPressed: () => _openGoogleMaps(trip),
+                      icon: const Icon(Icons.navigation_outlined,
+                          color: Colors.white, size: 20),
+                      label: const Text(
+                        "Open in Google Maps",
+                        style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: appColor,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        elevation: 0,
+                      ),
+                    ),
+                  ),
+                ],
                 const SizedBox(height: 24),
 
                 // 3. Route Stops Title and timeline list
@@ -570,6 +653,9 @@ class _RouteNavigationScreenState extends State<RouteNavigationScreen> {
                                   otpVerified: stop.otpVerified,
                                   podRequired: stop.podRequired,
                                   podUploaded: stop.podUploaded,
+                                  paymentMethod: stop.paymentMethod,
+                                  phone: stop.phone,
+                                  contactPerson: stop.contactPerson,
                                 ));
                           },
                           style: ElevatedButton.styleFrom(

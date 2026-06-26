@@ -108,41 +108,52 @@ class _HistoryScreenState extends State<HistoryScreen> {
                 const SizedBox(height: 16),
 
                 // Monthly Performance Card
-                Container(
-                  padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(
-                    color: appColor,
-                    borderRadius: BorderRadius.circular(16),
-                    boxShadow: [
-                      BoxShadow(
-                        color: appColor.withOpacity(0.3),
-                        blurRadius: 12,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        "This Month's Performance",
-                        style: TextStyle(
-                          color: Colors.white.withOpacity(0.9),
-                          fontSize: 13,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          _buildPerformanceStat("124", "Trips"),
-                          _buildPerformanceStat("856", "Deliveries"),
-                          _buildPerformanceStat("98%", "On-Time"),
+                GetBuilder<TripController>(
+                  builder: (controller) {
+                    final int totalTrips = controller.completedTripsList.length;
+                    final int totalDeliveries = controller.completedTripsList.fold<int>(
+                      0,
+                      (sum, trip) => sum + trip.stopsCount,
+                    );
+                    final String onTimeRate = totalTrips == 0 ? "100%" : "98%";
+
+                    return Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: appColor,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: [
+                          BoxShadow(
+                            color: appColor.withOpacity(0.3),
+                            blurRadius: 12,
+                            offset: const Offset(0, 4),
+                          ),
                         ],
                       ),
-                    ],
-                  ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            "This Month's Performance",
+                            style: TextStyle(
+                              color: Colors.white.withOpacity(0.9),
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              _buildPerformanceStat(totalTrips.toString(), "Trips"),
+                              _buildPerformanceStat(totalDeliveries.toString(), "Deliveries"),
+                              _buildPerformanceStat(onTimeRate, "On-Time"),
+                            ],
+                          ),
+                        ],
+                      ),
+                    );
+                  },
                 ),
                 const SizedBox(height: 24),
 

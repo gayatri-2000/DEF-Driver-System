@@ -1,6 +1,7 @@
 import 'dart:developer';
 import 'package:def_driver_system/Api/ResponseModel/trip_detail_response_model.dart';
 import 'package:def_driver_system/Api/ResponseModel/start_trip_response_model.dart';
+import 'package:def_driver_system/Api/ResponseModel/complete_trip_response_model.dart';
 import 'package:def_driver_system/Api/ResponseModel/driver_trips_response_model.dart';
 import 'package:def_driver_system/Api/ResponseModel/trip_history_response_model.dart';
 import 'package:def_driver_system/Api/ResponseModel/trip_history_detail_response_model.dart';
@@ -222,5 +223,24 @@ class TripRepo {
 
     log("TripRepo getDeliveryInstructions Response: $response");
     return DeliveryInstructionResponseModel.fromJson(response as Map<String, dynamic>);
+  }
+
+  Future<CompleteTripResponseModel> completeTrip(int tripId) async {
+    final Map<String, dynamic> body = {
+      'jsonrpc': '2.0',
+      'params': {
+        'trip_id': tripId,
+      },
+      'trip_id': tripId,
+    };
+
+    final response = await _apiService.getResponse(
+      url: ApiRouts.completeTripAPI,
+      apiType: APIType.aPost,
+      body: body,
+    );
+
+    log("TripRepo completeTrip Response: $response");
+    return CompleteTripResponseModel.fromJson(response as Map<String, dynamic>);
   }
 }
