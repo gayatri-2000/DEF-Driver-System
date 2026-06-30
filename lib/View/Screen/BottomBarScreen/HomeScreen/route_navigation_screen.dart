@@ -7,6 +7,7 @@ import 'package:def_driver_system/View/Constant/app_color.dart';
 import 'package:def_driver_system/Api/Repo/mock_data.dart';
 import 'package:def_driver_system/View/Screen/Delivery/delivery_verification_screen.dart';
 import 'package:def_driver_system/View/Utils/app_layout.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 class RouteNavigationScreen extends StatefulWidget {
   const RouteNavigationScreen({super.key});
@@ -19,6 +20,21 @@ class _RouteNavigationScreenState extends State<RouteNavigationScreen> {
   GoogleMapController? _mapController;
   final Set<Marker> _markers = {};
   final Set<Polyline> _polylines = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _requestLocationPermission();
+  }
+
+  Future<void> _requestLocationPermission() async {
+    final status = await Permission.locationWhenInUse.request();
+    if (status.isGranted) {
+      if (mounted) {
+        setState(() {});
+      }
+    }
+  }
 
   Future<void> _makeCall(String phoneNumber) async {
     final cleanPhone = phoneNumber.replaceAll(RegExp(r'\s+'), '');
@@ -84,11 +100,11 @@ class _RouteNavigationScreenState extends State<RouteNavigationScreen> {
 
       double markerColor = BitmapDescriptor.hueRed;
       if (i == 0) {
-        markerColor = BitmapDescriptor.hueGreen;
+        markerColor = BitmapDescriptor.hueViolet; // Violet for starting warehouse
       } else if (stop.status == "Delivered") {
-        markerColor = BitmapDescriptor.hueAzure;
+        markerColor = BitmapDescriptor.hueGreen; // Green for delivered/completed stops (matches list status)
       } else if (stop.status == "Active") {
-        markerColor = BitmapDescriptor.hueOrange;
+        markerColor = BitmapDescriptor.hueOrange; // Orange for currently active stop
       }
 
       _markers.add(
@@ -109,7 +125,7 @@ class _RouteNavigationScreenState extends State<RouteNavigationScreen> {
         Polyline(
           polylineId: const PolylineId('route_path'),
           points: points,
-          color: appColor,
+          color: darkColor, // Changed to darkColor (charcoal slate) to stand out from the blue location dot
           width: 4,
         ),
       );
@@ -274,6 +290,7 @@ class _RouteNavigationScreenState extends State<RouteNavigationScreen> {
                             });
                           }
                         },
+                        myLocationEnabled: true,
                         myLocationButtonEnabled: false,
                         zoomControlsEnabled: true,
                       ),

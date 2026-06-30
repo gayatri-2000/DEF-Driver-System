@@ -66,7 +66,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       end: Alignment.bottomCenter,
                     ),
                   ),
-                  padding: const EdgeInsets.only(top: 60, bottom: 40, left: 24, right: 24),
+                  padding: const EdgeInsets.only(
+                      top: 60, bottom: 40, left: 24, right: 24),
                   child: Column(
                     children: [
                       // Profile Photo/Avatar
@@ -78,7 +79,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             decoration: BoxDecoration(
                               color: Colors.white,
                               shape: BoxShape.circle,
-                              border: Border.all(color: Colors.white.withOpacity(0.3), width: 3),
+                              border: Border.all(
+                                  color: Colors.white.withOpacity(0.3),
+                                  width: 3),
                             ),
                             child: const Center(
                               child: Icon(
@@ -130,9 +133,21 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         child: Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            _buildStatBox(Icons.check_circle_outline, deliveredOrders.toString(), "Delivered", Colors.blue),
-                            _buildStatBox(Icons.local_shipping_outlined, totalOrders.toString(), "Total Orders", Colors.green),
-                            _buildStatBox(Icons.payment_outlined, pendingPayments.toString(), "Pending Pay", Colors.purple),
+                            _buildStatBox(
+                                Icons.check_circle_outline,
+                                deliveredOrders.toString(),
+                                "Delivered",
+                                Colors.blue),
+                            _buildStatBox(
+                                Icons.local_shipping_outlined,
+                                totalOrders.toString(),
+                                "Total Orders",
+                                Colors.green),
+                            _buildStatBox(
+                                Icons.payment_outlined,
+                                pendingPayments.toString(),
+                                "Pending Pay",
+                                Colors.purple),
                           ],
                         ),
                       ),
@@ -154,11 +169,26 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         padding: const EdgeInsets.symmetric(vertical: 8),
                         child: Column(
                           children: [
-                            _buildInfoTile(Icons.person_outline, Colors.blue.shade50, Colors.blue, "Username", email),
+                            _buildInfoTile(
+                                Icons.person_outline,
+                                Colors.blue.shade50,
+                                Colors.blue,
+                                "Username",
+                                email),
                             const Divider(height: 1, indent: 56),
-                            _buildInfoTile(Icons.phone_outlined, Colors.green.shade50, Colors.green, "Mobile Phone", phone),
+                            _buildInfoTile(
+                                Icons.phone_outlined,
+                                Colors.green.shade50,
+                                Colors.green,
+                                "Mobile Phone",
+                                phone),
                             const Divider(height: 1, indent: 56),
-                            _buildInfoTile(Icons.location_on_outlined, Colors.purple.shade50, Colors.purple, "Base Location", baseLocation),
+                            _buildInfoTile(
+                                Icons.location_on_outlined,
+                                Colors.purple.shade50,
+                                Colors.purple,
+                                "Base Location",
+                                baseLocation),
                           ],
                         ),
                       ),
@@ -189,7 +219,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                     color: appColor.withOpacity(0.1),
                                     shape: BoxShape.circle,
                                   ),
-                                  child: const Icon(Icons.local_shipping_outlined, color: appColor, size: 24),
+                                  child: const Icon(
+                                      Icons.local_shipping_outlined,
+                                      color: appColor,
+                                      size: 24),
                                 ),
                                 const SizedBox(width: 16),
                                 Column(
@@ -205,7 +238,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                                     ),
                                     const Text(
                                       "Assigned Vehicle",
-                                      style: TextStyle(fontSize: 12, color: Colors.grey),
+                                      style: TextStyle(
+                                          fontSize: 12, color: Colors.grey),
                                     ),
                                   ],
                                 ),
@@ -216,115 +250,134 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                       const SizedBox(height: 20),
 
-                  // Settings Heading
-                  const Text(
-                    "Settings",
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xff0C243E),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-
-                  // Settings Card
-                  Container(
-                    decoration: _buildSectionBoxDecoration(),
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    child: Column(
-                      children: [
-                        // Notification Toggle
-                        ListTile(
-                          leading: const Icon(Icons.notifications_none_outlined, color: Color(0xff0C243E)),
-                          title: const Text(
-                            "Notifications",
-                            style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xff0C243E)),
-                          ),
-                          subtitle: const Text(
-                            "Push notifications for new trips",
-                            style: TextStyle(fontSize: 12, color: Colors.grey),
-                          ),
-                          trailing: Switch(
-                            value: _pushNotifications,
-                            onChanged: (val) {
-                              setState(() {
-                                _pushNotifications = val;
-                              });
-                            },
-                            activeColor: appColor,
-                          ),
+                      // Settings Heading
+                      const Text(
+                        "Settings",
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xff0C243E),
                         ),
-                        const Divider(height: 1, indent: 56),
-                        // Privacy tile
-                        _buildSettingsNavigationTile(Icons.shield_outlined, "Privacy & Security", "Manage your privacy settings"),
-                        const Divider(height: 1, indent: 56),
-                        // App Settings tile
-                        _buildSettingsNavigationTile(Icons.settings_outlined, "App Settings", "Language, theme, and more"),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 28),
-
-                  // Logout Button
-                  InkWell(
-                    onTap: () {
-                      _authController.logout();
-                      Get.offAll(() => const LoginScreen());
-                    },
-                    borderRadius: BorderRadius.circular(12),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      decoration: BoxDecoration(
-                        color: redColor.withOpacity(0.06),
-                        border: Border.all(color: redColor.withOpacity(0.2), width: 1),
-                        borderRadius: BorderRadius.circular(12),
                       ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.exit_to_app, color: redColor, size: 20),
-                          const SizedBox(width: 10),
-                          Text(
-                            "Logout",
-                            style: TextStyle(
-                              color: redColor,
-                              fontSize: 15,
-                              fontWeight: FontWeight.bold,
+                      const SizedBox(height: 8),
+
+                      // Settings Card
+                      Container(
+                        decoration: _buildSectionBoxDecoration(),
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        child: Column(
+                          children: [
+                            // Notification Toggle
+                            ListTile(
+                              leading: const Icon(
+                                  Icons.notifications_none_outlined,
+                                  color: Color(0xff0C243E)),
+                              title: const Text(
+                                "Notifications",
+                                style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.bold,
+                                    color: Color(0xff0C243E)),
+                              ),
+                              subtitle: const Text(
+                                "Push notifications for new trips",
+                                style:
+                                    TextStyle(fontSize: 12, color: Colors.grey),
+                              ),
+                              trailing: Switch(
+                                value: _pushNotifications,
+                                onChanged: (val) {
+                                  setState(() {
+                                    _pushNotifications = val;
+                                  });
+                                },
+                                activeColor: appColor,
+                              ),
                             ),
-                          ),
-                        ],
+                            const Divider(height: 1, indent: 56),
+                            // Privacy tile
+                            _buildSettingsNavigationTile(
+                                Icons.shield_outlined,
+                                "Privacy & Security",
+                                "Manage your privacy settings"),
+                            const Divider(height: 1, indent: 56),
+                            // App Settings tile
+                            _buildSettingsNavigationTile(
+                                Icons.settings_outlined,
+                                "App Settings",
+                                "Language, theme, and more"),
+                          ],
+                        ),
                       ),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
+                      const SizedBox(height: 28),
 
-                  // Build details version footer
-                  Center(
-                    child: Column(
-                      children: [
-                        Text(
-                          "DEF Driver App v1.0.0",
-                          style: TextStyle(color: greyTextColor, fontSize: 12, fontWeight: FontWeight.w500),
+                      // Logout Button
+                      InkWell(
+                        onTap: () {
+                          _authController.logout();
+                          Get.offAll(() => const LoginScreen());
+                        },
+                        borderRadius: BorderRadius.circular(12),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          decoration: BoxDecoration(
+                            color: redColor.withOpacity(0.06),
+                            border: Border.all(
+                                color: redColor.withOpacity(0.2), width: 1),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.exit_to_app,
+                                  color: redColor, size: 20),
+                              const SizedBox(width: 10),
+                              Text(
+                                "Logout",
+                                style: TextStyle(
+                                  color: redColor,
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
-                        const SizedBox(height: 4),
-                        Text(
-                          "Member since Jan 2024",
-                          style: TextStyle(color: greyTextColor.withOpacity(0.6), fontSize: 11),
+                      ),
+                      const SizedBox(height: 24),
+
+                      // Build details version footer
+                      Center(
+                        child: Column(
+                          children: [
+                            Text(
+                              "DEF Driver App v1.0.0",
+                              style: TextStyle(
+                                  color: greyTextColor,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              "Member since Jan 2024",
+                              style: TextStyle(
+                                  color: greyTextColor.withOpacity(0.6),
+                                  fontSize: 11),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
+                      ),
+                      const SizedBox(height: 40),
+                    ],
                   ),
-                  const SizedBox(height: 40),
-                ],
-              ),
+                ),
+              ],
             ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
-  },
-);
-}
+  }
 
   BoxDecoration _buildSectionBoxDecoration() {
     return BoxDecoration(
@@ -381,7 +434,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildInfoTile(IconData icon, Color bgIcon, Color iconColor, String title, String subtitle) {
+  Widget _buildInfoTile(IconData icon, Color bgIcon, Color iconColor,
+      String title, String subtitle) {
     return ListTile(
       leading: Container(
         padding: const EdgeInsets.all(8),
@@ -410,12 +464,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildSettingsNavigationTile(IconData icon, String title, String subtitle) {
+  Widget _buildSettingsNavigationTile(
+      IconData icon, String title, String subtitle) {
     return ListTile(
       leading: Icon(icon, color: const Color(0xff0C243E)),
       title: Text(
         title,
-        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xff0C243E)),
+        style: const TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+            color: Color(0xff0C243E)),
       ),
       subtitle: Text(
         subtitle,

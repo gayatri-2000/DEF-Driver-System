@@ -11,10 +11,8 @@ class NotificationRepo {
       'jsonrpc': '2.0',
       'params': {
         'driver_id': driverId,
-        'customer_id': driverId,
       },
-      'driver_id': driverId, // For the new backend version
-      'customer_id': driverId, // For the old backend version
+      'driver_id': driverId,
     };
 
     final response = await _apiService.getResponse(
