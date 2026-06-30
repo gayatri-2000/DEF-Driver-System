@@ -351,7 +351,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         child: Column(
                           children: [
                             Text(
-                              "DEF Driver App v1.0.0",
+                              "Dreamwarez DEF DMS v1.0.0",
                               style: TextStyle(
                                   color: greyTextColor,
                                   fontSize: 12,
@@ -359,7 +359,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              "Member since Jan 2024",
+                              "",
                               style: TextStyle(
                                   color: greyTextColor.withOpacity(0.6),
                                   fontSize: 11),

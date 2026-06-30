@@ -61,9 +61,15 @@ class _RouteNavigationScreenState extends State<RouteNavigationScreen> {
     );
     try {
       if (await canLaunchUrl(launchUri)) {
-        await launchUrl(launchUri);
+        await launchUrl(
+          launchUri,
+          mode: LaunchMode.externalApplication, // Forces launching the native phone Messages app
+        );
       } else {
-        await launchUrl(launchUri);
+        await launchUrl(
+          launchUri,
+          mode: LaunchMode.externalApplication, // Forces launching the native phone Messages app
+        );
       }
     } catch (e) {
       errorSnackBar("SMS Error", "Could not send SMS to $phoneNumber");

@@ -87,7 +87,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   const SizedBox(height: 24),
                   // App Title
                   const Text(
-                    "DEF Driver App",
+                    "Dreamwarez DEF DMS",
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 28,
@@ -234,7 +234,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   const SizedBox(height: 16),
                   // Footer
                   Text(
-                    "DEF Central Operations Management v1.0.0",
+                    "",
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       fontSize: 12,

@@ -29,7 +29,7 @@ class MyApp extends StatelessWidget {
     final AuthController authController = Get.find<AuthController>();
 
     return GetMaterialApp(
-      title: 'DEF Driver System',
+      title: 'Dreamwarez DEF DMS',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xff1167EE)),
